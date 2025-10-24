@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import { createSampleRetrospective } from '@/lib/utils/sample-data'
 
 export default function SignUpPage() {
   const router = useRouter()
@@ -21,6 +22,7 @@ export default function SignUpPage() {
     setMessage(null)
 
     try {
+      // Sign up the user with email confirmation disabled
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -28,16 +30,29 @@ export default function SignUpPage() {
           data: {
             display_name: displayName || email.split('@')[0],
           },
+          emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       })
 
       if (error) throw error
 
       if (data.user) {
-        setMessage('Account created! Redirecting to dashboard...')
-        setTimeout(() => {
+        // Check if the user is confirmed (email confirmation might be disabled)
+        const session = data.session
+
+        if (session) {
+          // User is auto-confirmed and logged in
+          setMessage('Account created! Setting up your workspace...')
+
+          // Create sample retrospective data for the new user
+          await createSampleRetrospective(data.user.id)
+
+          // Redirect to dashboard
           router.push('/dashboard')
-        }, 1500)
+        } else {
+          // Email confirmation is required
+          setMessage('Account created! Please check your email to confirm your account.')
+        }
       }
     } catch (error: any) {
       setError(error.message || 'An error occurred during sign up')

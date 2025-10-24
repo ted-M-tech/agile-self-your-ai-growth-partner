@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import { useUser } from '@/lib/auth/hooks'
 import { format } from 'date-fns'
+import Icon from '@/components/Icon'
 
 type Action = {
   id: string
@@ -112,157 +113,186 @@ export default function ActionsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <p className="mt-4 text-gray-600">Loading actions...</p>
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center animate-fade-in">
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
+            <div className="w-12 h-12 border-3 border-ios-blue/30 border-t-ios-blue rounded-full animate-spin" />
+          </div>
+          <p className="text-ios-footnote text-ios-label-secondary">Loading actions...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-3xl mx-auto pb-8 animate-slide-up">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-primary mb-2">Action Items</h1>
-        <p className="text-gray-600">Track and complete your commitments</p>
+        <h1 className="text-ios-large-title text-ios-label-primary mb-2">Actions</h1>
+        <p className="text-ios-body text-ios-label-secondary">Track and complete your commitments</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-        <div className="card">
-          <div className="text-2xl font-bold text-primary">{actions.length}</div>
-          <div className="text-sm text-gray-600">Total Actions</div>
+      {/* Stats Summary */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="stat-card text-center">
+          <div className="text-ios-title-1 font-bold text-ios-label-primary mb-1">
+            {actions.length}
+          </div>
+          <div className="text-ios-caption-1 text-ios-label-secondary font-medium uppercase tracking-wide">
+            Total
+          </div>
         </div>
-        <div className="card">
-          <div className="text-2xl font-bold text-status-warning">{pendingCount}</div>
-          <div className="text-sm text-gray-600">Pending</div>
+        <div className="stat-card text-center">
+          <div className="text-ios-title-1 font-bold text-ios-orange mb-1">
+            {pendingCount}
+          </div>
+          <div className="text-ios-caption-1 text-ios-label-secondary font-medium uppercase tracking-wide">
+            Pending
+          </div>
         </div>
-        <div className="card">
-          <div className="text-2xl font-bold text-status-success">{completedCount}</div>
-          <div className="text-sm text-gray-600">Completed</div>
+        <div className="stat-card text-center">
+          <div className="text-ios-title-1 font-bold text-ios-green mb-1">
+            {completedCount}
+          </div>
+          <div className="text-ios-caption-1 text-ios-label-secondary font-medium uppercase tracking-wide">
+            Completed
+          </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex space-x-2 mb-6">
+      {/* Filter Pills */}
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        <button
+          onClick={() => setFilter('pending')}
+          className={`px-4 py-2 rounded-full text-ios-subheadline font-semibold whitespace-nowrap transition-all ${
+            filter === 'pending'
+              ? 'bg-ios-blue text-white shadow-lg shadow-ios-blue/30'
+              : 'bg-ios-gray-6 text-ios-label-secondary hover:bg-ios-gray-5'
+          }`}
+        >
+          Pending
+        </button>
         <button
           onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            filter === 'all' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          className={`px-4 py-2 rounded-full text-ios-subheadline font-semibold whitespace-nowrap transition-all ${
+            filter === 'all'
+              ? 'bg-ios-blue text-white shadow-lg shadow-ios-blue/30'
+              : 'bg-ios-gray-6 text-ios-label-secondary hover:bg-ios-gray-5'
           }`}
         >
           All
         </button>
         <button
-          onClick={() => setFilter('pending')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            filter === 'pending'
-              ? 'bg-status-warning text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Pending ({pendingCount})
-        </button>
-        <button
           onClick={() => setFilter('completed')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-4 py-2 rounded-full text-ios-subheadline font-semibold whitespace-nowrap transition-all ${
             filter === 'completed'
-              ? 'bg-status-success text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              ? 'bg-ios-blue text-white shadow-lg shadow-ios-blue/30'
+              : 'bg-ios-gray-6 text-ios-label-secondary hover:bg-ios-gray-5'
           }`}
         >
-          Completed ({completedCount})
+          Completed
         </button>
       </div>
 
-      {/* Actions List */}
+      {/* Actions List - iOS Reminders Style */}
       {actions.length === 0 ? (
-        <div className="card text-center py-12">
-          <div className="text-6xl mb-4">🎯</div>
-          <h3 className="text-xl font-semibold mb-2">No actions found</h3>
-          <p className="text-gray-600 mb-6">
+        <div className="card-flat text-center py-16 animate-scale-in">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-ios-blue/10 mb-4">
+            <Icon name="target" size={40} className="text-ios-blue" />
+          </div>
+          <h3 className="text-ios-title-3 text-ios-label-primary mb-2">No actions found</h3>
+          <p className="text-ios-body text-ios-label-secondary mb-8 max-w-sm mx-auto">
             {filter === 'pending'
               ? "You don't have any pending actions. Great job!"
               : filter === 'completed'
               ? "You haven't completed any actions yet. Keep going!"
               : 'Create a retrospective to add action items'}
           </p>
-          <Link href="/dashboard/new" className="btn btn-primary inline-block">
-            Create Retrospective
+          <Link href="/dashboard/new" className="btn btn-primary inline-flex items-center space-x-2">
+            <Icon name="plus.circle.fill" size={18} />
+            <span>Create Retrospective</span>
           </Link>
         </div>
       ) : (
-        <div className="space-y-3">
-          {actions.map((action) => (
+        <div className="card-flat divide-y divide-ios-gray-5 overflow-hidden">
+          {actions.map((action, index) => (
             <div
               key={action.id}
-              className={`card hover:shadow-lg transition-all ${
-                action.is_completed ? 'bg-gray-50 opacity-75' : ''
-              }`}
+              className="group relative"
+              style={{
+                animationDelay: `${index * 30}ms`,
+                animation: 'fadeIn 0.3s ease-out forwards'
+              }}
             >
-              <div className="flex items-start gap-4">
-                {/* Checkbox */}
+              <div className="flex items-start gap-4 p-4 transition-all hover:bg-ios-gray-6/50 active:bg-ios-gray-6">
+                {/* iOS-style Circular Checkbox */}
                 <button
                   onClick={() => toggleAction(action.id, action.is_completed)}
-                  className="flex-shrink-0 mt-1"
+                  className="flex-shrink-0 mt-0.5 focus:outline-none focus:ring-2 focus:ring-ios-blue/50 rounded-full"
                 >
-                  <div
-                    className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                      action.is_completed
-                        ? 'bg-status-success border-status-success'
-                        : 'border-gray-300 hover:border-secondary'
-                    }`}
-                  >
-                    {action.is_completed && <span className="text-white text-sm">✓</span>}
+                  <div className={`
+                    w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all
+                    ${action.is_completed
+                      ? 'bg-ios-blue border-ios-blue'
+                      : 'border-ios-gray-3 hover:border-ios-blue'
+                    }
+                  `}>
+                    {action.is_completed && (
+                      <Icon name="checkmark.circle.fill" size={24} className="text-white -m-0.5" />
+                    )}
                   </div>
                 </button>
 
                 {/* Content */}
-                <div className="flex-1">
-                  <p
-                    className={`text-lg mb-2 ${
-                      action.is_completed ? 'line-through text-gray-500' : 'text-gray-800'
-                    }`}
-                  >
+                <div className="flex-1 min-w-0">
+                  <p className={`
+                    text-ios-body mb-1 transition-all
+                    ${action.is_completed
+                      ? 'line-through text-ios-label-tertiary'
+                      : 'text-ios-label-primary'
+                    }
+                  `}>
                     {action.text}
                   </p>
 
-                  <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                    <span>
-                      Created: {format(new Date(action.created_at), 'MMM d, yyyy')}
+                  <div className="flex flex-wrap items-center gap-2 text-ios-caption-1 text-ios-label-secondary">
+                    <span className="flex items-center gap-1">
+                      <Icon name="calendar" size={12} />
+                      {format(new Date(action.created_at), 'MMM d')}
                     </span>
                     {action.is_completed && action.completed_at && (
-                      <span className="text-status-success">
-                        Completed: {format(new Date(action.completed_at), 'MMM d, yyyy')}
-                      </span>
+                      <>
+                        <span className="text-ios-gray-4">•</span>
+                        <span className="flex items-center gap-1 text-ios-green">
+                          <Icon name="checkmark.circle.fill" size={12} />
+                          {format(new Date(action.completed_at), 'MMM d')}
+                        </span>
+                      </>
                     )}
                     {action.retrospectives && (
-                      <Link
-                        href={`/dashboard/retrospective/${action.retrospective_id}`}
-                        className="text-secondary hover:text-secondary-dark"
-                      >
-                        View Retrospective →
-                      </Link>
+                      <>
+                        <span className="text-ios-gray-4">•</span>
+                        <Link
+                          href={`/dashboard/retrospective/${action.retrospective_id}`}
+                          className="text-ios-blue hover:text-ios-blue/80 flex items-center gap-1"
+                        >
+                          <Icon name="doc.text" size={12} />
+                          <span>Retrospective</span>
+                        </Link>
+                      </>
                     )}
                   </div>
                 </div>
 
-                {/* Delete Button */}
+                {/* Delete Button - Hidden until hover */}
                 <button
                   onClick={() => deleteAction(action.id)}
-                  className="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors"
+                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
                   title="Delete action"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
+                  <div className="p-2 rounded-lg hover:bg-ios-red/10 active:bg-ios-red/20 transition-colors">
+                    <Icon name="trash.fill" size={18} className="text-ios-red" />
+                  </div>
                 </button>
               </div>
             </div>
