@@ -71,10 +71,12 @@ export default function SignUpPage() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
+          skipBrowserRedirect: false,
         },
       })
 
       if (error) throw error
+      // OAuth will redirect automatically, loading state remains true
     } catch (error: any) {
       setError(error.message || 'An error occurred during Google sign up')
       setLoading(false)
