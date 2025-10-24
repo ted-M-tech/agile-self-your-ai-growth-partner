@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Icon from './Icon'
 
 type AIInsightsProps = {
@@ -20,17 +20,15 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (retroCount >= 2) {
-      loadInsights()
-    } else {
-      // Show demo insights when user doesn't have enough data
+  const loadInsights = useCallback(async () => {
+    // Safety check: Don't call API if user doesn't have enough retrospectives
+    if (retroCount < 2) {
+      console.log('⚠️ Skipping AI insights API call - need at least 2 retrospectives (found:', retroCount, ')')
       setLoading(false)
-      setInsights(null) // Will trigger the demo UI
+      setInsights(null)
+      return
     }
-  }, [userId, retroCount])
 
-  const loadInsights = async () => {
     setLoading(true)
     setError(null)
     try {
@@ -68,7 +66,11 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId, retroCount])
+
+  useEffect(() => {
+    loadInsights()
+  }, [loadInsights])
 
   if (loading) {
     return (
