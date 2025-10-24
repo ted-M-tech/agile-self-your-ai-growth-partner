@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Icon from './Icon'
 
 type AIInsightsProps = {
@@ -19,6 +19,8 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
   const [insights, setInsights] = useState<CombinedInsights | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const loadingRef = useRef(false)
+  const lastRetroCountRef = useRef<number | null>(null)
 
   const loadInsights = useCallback(async () => {
     // Safety check: Don't call API if user doesn't have enough retrospectives
@@ -29,9 +31,25 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
       return
     }
 
+    // Prevent duplicate calls (for React StrictMode and rapid re-renders)
+    if (loadingRef.current) {
+      console.log('⏭️ Skipping duplicate AI insights API call (already loading)')
+      return
+    }
+
+    // Skip if retroCount hasn't changed (prevents duplicate calls on re-render)
+    if (lastRetroCountRef.current === retroCount) {
+      console.log('⏭️ Skipping AI insights API call (retroCount unchanged)')
+      return
+    }
+
+    loadingRef.current = true
+    lastRetroCountRef.current = retroCount
     setLoading(true)
     setError(null)
     try {
+      console.log('🔍 Loading AI insights for user:', userId, 'retroCount:', retroCount)
+
       // Use new cached insights API
       const response = await fetch('/api/ai/insights', {
         method: 'POST',
@@ -65,6 +83,7 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
       setError(err.message)
     } finally {
       setLoading(false)
+      loadingRef.current = false
     }
   }, [userId, retroCount])
 
@@ -168,9 +187,11 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
                 </div>
                 <div className="text-right">
                   <p className="text-ios-caption1 text-ios-label-secondary mb-1">Trend</p>
-                  <div className="flex items-center space-x-1 justify-end">
-                    <Icon name="chevron.right" size={24} className="text-ios-green -rotate-90" />
-                    <span className="text-ios-headline font-semibold text-ios-green">Improving</span>
+                  <div className="flex items-center justify-end space-x-1">
+                    <Icon name="arrow.up" size={20} className="text-ios-green" />
+                    <span className="text-ios-body font-semibold text-ios-green">
+                      Improving
+                    </span>
                   </div>
                 </div>
               </div>
@@ -199,7 +220,7 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
               {/* Demo Growth Areas */}
               <div>
                 <div className="flex items-center space-x-2 mb-2">
-                  <Icon name="chart.bar.fill" size={16} className="text-ios-blue" />
+                  <Icon name="chart.bar" size={16} className="text-ios-blue" />
                   <h4 className="text-ios-subheadline text-ios-label-primary font-semibold">Growth Areas</h4>
                 </div>
                 <div className="space-y-2">
@@ -235,7 +256,7 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
                 Unlock AI Insights
               </h3>
               <p className="text-ios-body text-ios-label-secondary mb-6 leading-relaxed">
-                Create your first retrospective to unlock personalized AI insights about your growth patterns, well-being trends, and focus areas.
+                Complete your first retrospective to unlock AI insights.
               </p>
               <div className="flex items-center justify-center space-x-2 text-ios-subheadline text-ios-purple font-semibold">
                 <span>{retroCount} / 1 retrospective</span>
@@ -257,11 +278,11 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
     return null
   }
 
-  const getTrendIcon = (trend: string): 'chevron.right' | 'chevron.down' => {
+  const getTrendIcon = (trend: string): 'arrow.up' | 'arrow.right' | 'arrow.down' => {
     switch (trend) {
-      case 'improving': return 'chevron.right'
-      case 'declining': return 'chevron.down'
-      default: return 'chevron.right'
+      case 'improving': return 'arrow.up'
+      case 'declining': return 'arrow.down'
+      default: return 'arrow.right'
     }
   }
 
@@ -270,6 +291,14 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
       case 'improving': return 'text-ios-green'
       case 'declining': return 'text-ios-red'
       default: return 'text-ios-gray-1'
+    }
+  }
+
+  const getTrendLabel = (trend: string) => {
+    switch (trend) {
+      case 'improving': return 'Improving'
+      case 'declining': return 'Declining'
+      default: return 'Stable'
     }
   }
 
@@ -310,16 +339,14 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
           </div>
           <div className="text-right">
             <p className="text-ios-caption1 text-ios-label-secondary mb-1">Trend</p>
-            <div className="flex items-center space-x-1 justify-end">
+            <div className="flex items-center justify-end space-x-1">
               <Icon
                 name={getTrendIcon(insights.wellbeingTrend)}
-                size={24}
-                className={`${getTrendColor(insights.wellbeingTrend)} ${
-                  insights.wellbeingTrend === 'improving' ? '-rotate-90' : ''
-                }`}
+                size={20}
+                className={getTrendColor(insights.wellbeingTrend)}
               />
-              <span className={`text-ios-headline font-semibold capitalize ${getTrendColor(insights.wellbeingTrend)}`}>
-                {insights.wellbeingTrend}
+              <span className={`text-ios-body font-semibold ${getTrendColor(insights.wellbeingTrend)}`}>
+                {getTrendLabel(insights.wellbeingTrend)}
               </span>
             </div>
           </div>
@@ -353,7 +380,7 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
           {insights.topThemes.filter(t => t.category === 'growth').length > 0 && (
             <div>
               <div className="flex items-center space-x-2 mb-2">
-                <Icon name="chart.bar.fill" size={16} className="text-ios-blue" />
+                <Icon name="chart.bar" size={16} className="text-ios-blue" />
                 <h4 className="text-ios-subheadline text-ios-label-primary font-semibold">Growth Areas</h4>
               </div>
               <div className="space-y-2">
