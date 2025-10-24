@@ -40,7 +40,7 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch recent retrospectives
+      // Fetch recent retrospectives (for display)
       const { data: retros, error: retrosError } = await supabase
         .from('retrospectives')
         .select('*')
@@ -49,6 +49,19 @@ export default function DashboardPage() {
         .limit(5)
 
       if (retrosError) throw retrosError
+
+      // Get actual total count of all retrospectives
+      const { count: totalRetroCount } = await supabase
+        .from('retrospectives')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user!.id)
+
+      // Get count of completed retrospectives (for AI insights)
+      const { count: completedRetroCount } = await supabase
+        .from('retrospectives')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user!.id)
+        .eq('status', 'completed')
 
       // Fetch actions count
       const { count: totalActions } = await supabase
@@ -64,8 +77,8 @@ export default function DashboardPage() {
 
       setRetrospectives(retros || [])
       setStats({
-        totalRetrospectives: retros?.length || 0,
-        completedRetrospectives: retros?.filter(r => r.status === 'completed').length || 0,
+        totalRetrospectives: totalRetroCount || 0,
+        completedRetrospectives: completedRetroCount || 0,
         totalActions: totalActions || 0,
         completedActions: completedActions || 0,
       })
@@ -239,7 +252,7 @@ export default function DashboardPage() {
 
       {/* AI Insights Section - Auto-loads */}
       <div className="mb-10">
-        <DashboardAIInsights userId={user!.id} retroCount={retrospectives.length} />
+        <DashboardAIInsights userId={user!.id} retroCount={stats.completedRetrospectives} />
       </div>
 
       {/* Recent Retrospectives */}
