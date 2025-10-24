@@ -19,6 +19,10 @@ type ActionItem = {
   tryId?: string
 }
 
+type TryWithSelection = KPTAItem & {
+  selected: boolean
+}
+
 export default function NewRetrospectivePage() {
   const router = useRouter()
   const { user } = useUser()
@@ -35,6 +39,7 @@ export default function NewRetrospectivePage() {
   const [problems, setProblems] = useState<KPTAItem[]>([{ text: '', tempId: '1' }])
   const [tries, setTries] = useState<KPTAItem[]>([{ text: '', tempId: '1' }])
   const [actions, setActions] = useState<ActionItem[]>([])
+  const [selectedTries, setSelectedTries] = useState<Set<string>>(new Set())
 
   // AI Summary state
   const [aiSummary, setAiSummary] = useState<{
@@ -125,16 +130,10 @@ export default function NewRetrospectivePage() {
     const steps: Array<'keep' | 'problem' | 'try' | 'action'> = ['keep', 'problem', 'try', 'action']
     const currentIndex = steps.indexOf(currentStep)
 
-    // When moving from Problem to Try, generate AI summary
-    if (currentStep === 'problem') {
-      setCurrentStep('try')
-      await generateSummary()
-      return
-    }
-
-    // After Try step, auto-generate actions
-    if (currentStep === 'try') {
-      await autoGenerateActions()
+    // If transitioning from Try to Action, auto-select all valid tries
+    if (currentStep === 'try' && currentIndex < steps.length - 1) {
+      const validTryIds = tries.filter(t => t.text.trim()).map(t => t.tempId)
+      setSelectedTries(new Set(validTryIds))
     }
 
     if (currentIndex < steps.length - 1) {
@@ -267,10 +266,11 @@ export default function NewRetrospectivePage() {
   }
 
   const autoGenerateActions = async () => {
-    const validTries = tries.filter(t => t.text.trim())
+    // Only generate actions for selected tries
+    const selectedValidTries = tries.filter(t => t.text.trim() && selectedTries.has(t.tempId))
     const validProblems = problems.filter(p => p.text.trim()).map(p => p.text)
 
-    if (validTries.length === 0) {
+    if (selectedValidTries.length === 0) {
       setActions([])
       return
     }
@@ -279,7 +279,7 @@ export default function NewRetrospectivePage() {
     try {
       const allActions: ActionItem[] = []
 
-      for (const tryItem of validTries) {
+      for (const tryItem of selectedValidTries) {
         const generatedActions = await generateActionsFromTry(tryItem.text, validProblems)
 
         generatedActions.forEach(action => {
@@ -298,8 +298,8 @@ export default function NewRetrospectivePage() {
       setActions(allActions)
     } catch (error) {
       console.error('Error generating actions:', error)
-      // Fallback: create one action per try
-      const fallbackActions = validTries.map(tryItem => {
+      // Fallback: create one action per selected try
+      const fallbackActions = selectedValidTries.map(tryItem => {
         const defaultDeadline = new Date()
         defaultDeadline.setDate(defaultDeadline.getDate() + 7)
         return {
@@ -404,191 +404,220 @@ export default function NewRetrospectivePage() {
   const renderStep = () => {
 
     if (currentStep === 'action') {
+      const validTries = tries.filter(t => t.text.trim())
+      const hasSelectedTries = selectedTries.size > 0
+
       return (
         <div className="space-y-6">
           <div className="text-center mb-8">
             <div className="text-6xl mb-4">🎯</div>
             <h2 className="text-3xl font-bold text-primary mb-2">Action Items</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              {aiLoading
-                ? 'AI is generating action items from your tries...'
-                : 'Review and set deadlines for your action items'}
+              Select which tries to convert into concrete action items
             </p>
           </div>
 
-          {aiLoading ? (
-            <div className="text-center py-12">
-              <div className="inline-flex items-center justify-center w-12 h-12 mb-4">
-                <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
-              </div>
-              <p className="text-ios-body text-ios-label-secondary">Generating actions...</p>
-            </div>
-          ) : (
-            <div className="space-y-4 max-w-3xl mx-auto">
-              {actions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No actions generated. Please add some Try items first.
-                </div>
-              ) : (
-                actions.map((action, index) => (
-                  <div key={action.tempId} className="card flex items-start gap-4">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-start gap-2">
-                        <Icon name="target" size={20} className="text-primary mt-1" />
-                        <p className="text-ios-body text-ios-label-primary flex-1">{action.text}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Icon name="calendar" size={16} className="text-ios-label-secondary" />
-                        <label className="text-ios-caption1 text-ios-label-secondary">Deadline:</label>
-                        <input
-                          type="date"
-                          value={action.deadline}
-                          onChange={(e) => updateActionDeadline(index, e.target.value)}
-                          className="input text-sm"
-                          min={new Date().toISOString().split('T')[0]}
-                        />
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => removeAction(index)}
-                      className="text-red-500 hover:text-red-700 p-2"
+          {/* Try Selection */}
+          {validTries.length > 0 && (
+            <div className="max-w-3xl mx-auto mb-6">
+              <div className="card bg-gradient-to-br from-ios-blue/5 to-ios-teal/5 border-ios-blue/20">
+                <h3 className="text-ios-headline font-semibold text-ios-label-primary mb-3 flex items-center space-x-2">
+                  <Icon name="checkmark.circle" size={20} className="text-ios-blue" />
+                  <span>Select Tries to Convert</span>
+                </h3>
+                <div className="space-y-2">
+                  {validTries.map((tryItem) => (
+                    <label
+                      key={tryItem.tempId}
+                      className={`flex items-start space-x-3 p-3 rounded-xl cursor-pointer transition-all ${
+                        selectedTries.has(tryItem.tempId)
+                          ? 'bg-ios-blue/10 border-2 border-ios-blue'
+                          : 'bg-white border-2 border-ios-gray-5 hover:border-ios-blue/30'
+                      }`}
                     >
-                      <Icon name="trash" size={18} />
-                    </button>
-                  </div>
-                ))
-              )}
+                      <input
+                        type="checkbox"
+                        checked={selectedTries.has(tryItem.tempId)}
+                        onChange={(e) => {
+                          const newSelected = new Set(selectedTries)
+                          if (e.target.checked) {
+                            newSelected.add(tryItem.tempId)
+                          } else {
+                            newSelected.delete(tryItem.tempId)
+                          }
+                          setSelectedTries(newSelected)
+                        }}
+                        className="mt-1 w-5 h-5 text-ios-blue rounded focus:ring-ios-blue"
+                      />
+                      <span className="flex-1 text-ios-body text-ios-label-primary">{tryItem.text}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Generate Actions Button */}
+                <button
+                  onClick={autoGenerateActions}
+                  disabled={!hasSelectedTries || aiLoading}
+                  className="btn btn-primary w-full mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {aiLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Generating Actions...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="sparkles" size={18} />
+                      <span>Generate Actions ({selectedTries.size} selected)</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           )}
+
+          {/* Generated Actions */}
+          <div className="space-y-4 max-w-3xl mx-auto">
+            {actions.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">
+                  {validTries.length === 0
+                    ? 'Go back and add some Try items first'
+                    : hasSelectedTries
+                    ? 'Click "Generate Actions" to create action items from your selected tries'
+                    : 'Select at least one Try item above to generate actions'}
+                </p>
+                <button
+                  onClick={() => {
+                    const defaultDeadline = new Date()
+                    defaultDeadline.setDate(defaultDeadline.getDate() + 7)
+                    setActions([{
+                      text: '',
+                      tempId: Date.now().toString(),
+                      deadline: defaultDeadline.toISOString().split('T')[0]
+                    }])
+                  }}
+                  className="btn btn-outline"
+                >
+                  <Icon name="plus.circle" size={18} className="inline mr-2" />
+                  Or Add Manually
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-ios-headline font-semibold text-ios-label-primary">
+                    Action Items ({actions.length})
+                  </h3>
+                  <button
+                    onClick={autoGenerateActions}
+                    disabled={!hasSelectedTries || aiLoading}
+                    className="text-ios-blue text-ios-subheadline font-semibold disabled:opacity-50"
+                  >
+                    Regenerate
+                  </button>
+                </div>
+                {actions.map((action, index) => (
+                  <div key={action.tempId} className="card">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-start gap-2">
+                          <Icon name="target" size={20} className="text-primary mt-3" />
+                          <textarea
+                            value={action.text}
+                            onChange={(e) => {
+                              const updated = [...actions]
+                              updated[index] = { ...updated[index], text: e.target.value }
+                              setActions(updated)
+                            }}
+                            placeholder="What action will you take?"
+                            className="textarea flex-1"
+                            rows={2}
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2 ml-7">
+                          <Icon name="calendar" size={16} className="text-ios-label-secondary" />
+                          <label className="text-ios-caption1 text-ios-label-secondary">Deadline:</label>
+                          <input
+                            type="date"
+                            value={action.deadline}
+                            onChange={(e) => updateActionDeadline(index, e.target.value)}
+                            className="input text-sm"
+                            min={new Date().toISOString().split('T')[0]}
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeAction(index)}
+                        className="text-red-500 hover:text-red-700 p-2"
+                      >
+                        <Icon name="trash" size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={() => {
+                    const defaultDeadline = new Date()
+                    defaultDeadline.setDate(defaultDeadline.getDate() + 7)
+                    setActions([...actions, {
+                      text: '',
+                      tempId: Date.now().toString(),
+                      deadline: defaultDeadline.toISOString().split('T')[0]
+                    }])
+                  }}
+                  className="btn btn-outline w-full"
+                >
+                  <Icon name="plus.circle" size={18} className="inline mr-2" />
+                  Add Another Action
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )
     }
 
-    // Special rendering for Try step with AI summary
+    // Try step
     if (currentStep === 'try') {
       return (
         <div className="space-y-6">
-          <div className="text-center mb-6">
+          <div className="text-center mb-8">
             <div className="text-6xl mb-4">🔬</div>
             <h2 className="text-3xl font-bold text-secondary mb-2">Try</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Based on AI insights, what new approaches will you experiment with?
+              What new approaches will you experiment with?
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* AI Insights Panel */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <Icon name="sparkles" size={20} className="text-ios-purple" />
-                <h3 className="text-ios-title-3 text-ios-label-primary font-semibold">AI Analysis</h3>
+          <div className="space-y-4 max-w-3xl mx-auto">
+            {tries.map((item, index) => (
+              <div key={item.tempId} className="flex gap-2">
+                <textarea
+                  value={item.text}
+                  onChange={(e) => updateItem('try', index, e.target.value)}
+                  placeholder={`Enter approach #${index + 1}...`}
+                  className="textarea flex-1"
+                  rows={3}
+                />
+                {tries.length > 1 && (
+                  <button
+                    onClick={() => removeItem('try', index)}
+                    className="text-red-500 hover:text-red-700 px-3"
+                  >
+                    <Icon name="trash" size={18} />
+                  </button>
+                )}
               </div>
+            ))}
 
-              {aiLoading ? (
-                <div className="card text-center py-12">
-                  <div className="inline-flex items-center justify-center w-12 h-12 mb-3">
-                    <div className="w-8 h-8 border-3 border-ios-purple/30 border-t-ios-purple rounded-full animate-spin" />
-                  </div>
-                  <p className="text-ios-body text-ios-label-secondary">Analyzing...</p>
-                </div>
-              ) : aiSummary ? (
-                <div className="space-y-3">
-                  {/* Summary */}
-                  {aiSummary.summary && (
-                    <div className="card bg-gradient-to-br from-ios-blue/5 to-ios-teal/5 border border-ios-blue/20">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Icon name="doc.text" size={16} className="text-ios-blue" />
-                        <h4 className="text-ios-subheadline font-semibold text-ios-blue">Summary</h4>
-                      </div>
-                      <p className="text-ios-body text-ios-label-primary leading-relaxed">
-                        {aiSummary.summary}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Key Insight */}
-                  {aiSummary.keyInsight && (
-                    <div className="card bg-gradient-to-br from-ios-yellow/10 to-ios-orange/10 border border-ios-yellow/30">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Icon name="lightbulb.fill" size={16} className="text-ios-orange" />
-                        <h4 className="text-ios-subheadline font-semibold text-ios-orange">Key Focus</h4>
-                      </div>
-                      <p className="text-ios-body text-ios-label-primary font-medium leading-relaxed">
-                        {aiSummary.keyInsight}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Suggestions */}
-                  {aiSummary.suggestions.length > 0 && (
-                    <div className="card bg-gradient-to-br from-ios-purple/5 to-ios-purple/10 border border-ios-purple/20">
-                      <div className="flex items-center space-x-2 mb-3">
-                        <Icon name="arrow.right" size={16} className="text-ios-purple" />
-                        <h4 className="text-ios-subheadline font-semibold text-ios-purple">What to Try</h4>
-                      </div>
-                      <div className="space-y-2">
-                        {aiSummary.suggestions.map((suggestion, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => useSuggestion(suggestion)}
-                            className="w-full text-left p-3 rounded-lg bg-white hover:bg-ios-purple/5 border border-ios-purple/10 hover:border-ios-purple/30 transition-all group"
-                          >
-                            <div className="flex items-start space-x-2">
-                              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-ios-purple/20 flex items-center justify-center mt-0.5">
-                                <span className="text-ios-caption2 font-bold text-ios-purple">{idx + 1}</span>
-                              </div>
-                              <span className="text-ios-body text-ios-label-primary leading-relaxed flex-1">
-                                {suggestion}
-                              </span>
-                              <Icon name="plus.circle" size={18} className="text-ios-purple opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                      <p className="text-ios-caption2 text-ios-label-tertiary mt-2 text-center">
-                        💡 Click any suggestion to add it to your Tries
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-            </div>
-
-            {/* Try Input Panel */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <Icon name="pencil" size={20} className="text-secondary" />
-                <h3 className="text-ios-title-3 text-ios-label-primary font-semibold">Your Tries</h3>
-              </div>
-
-              {tries.map((item, index) => (
-                <div key={item.tempId} className="flex gap-2">
-                  <textarea
-                    value={item.text}
-                    onChange={(e) => updateItem('try', index, e.target.value)}
-                    placeholder={`Enter approach #${index + 1}...`}
-                    className="textarea flex-1"
-                    rows={3}
-                  />
-                  {tries.length > 1 && (
-                    <button
-                      onClick={() => removeItem('try', index)}
-                      className="text-red-500 hover:text-red-700 px-3"
-                    >
-                      <Icon name="trash" size={18} />
-                    </button>
-                  )}
-                </div>
-              ))}
-
-              <button
-                onClick={() => addItem('try')}
-                className="btn btn-outline w-full"
-              >
-                <Icon name="plus.circle" size={18} className="inline mr-2" />
-                Add Another Try
-              </button>
-            </div>
+            <button
+              onClick={() => addItem('try')}
+              className="btn btn-outline w-full"
+            >
+              <Icon name="plus.circle" size={18} className="inline mr-2" />
+              Add Another Try
+            </button>
           </div>
         </div>
       )
@@ -661,115 +690,119 @@ export default function NewRetrospectivePage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-primary mb-4">New Retrospective</h1>
-
-        {/* Period Type and Date Range */}
-        <div className="mb-6 space-y-4">
-          {/* Period Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Period Type
-            </label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handlePeriodTypeChange('weekly')}
-                className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all ${
-                  periodType === 'weekly'
-                    ? 'bg-secondary text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Weekly
-              </button>
-              <button
-                onClick={() => handlePeriodTypeChange('monthly')}
-                className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all ${
-                  periodType === 'monthly'
-                    ? 'bg-secondary text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Monthly
-              </button>
-            </div>
+      {/* Header - Apple Style */}
+      <div className="mb-6">
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="p-3 rounded-2xl bg-gradient-to-br from-ios-blue/10 to-ios-teal/10">
+            <Icon name="sparkles" size={28} className="text-ios-blue" />
           </div>
+          <div>
+            <h1 className="text-ios-large-title text-ios-label-primary font-bold">New Retrospective</h1>
+            <p className="text-ios-body text-ios-label-secondary">Reflect and grow from your experiences</p>
+          </div>
+        </div>
 
-          {/* Date Range */}
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Start Date
-              </label>
+        {/* Apple-style Segmented Control for Period Type */}
+        <div className="mb-4">
+          <label className="block text-ios-caption1 font-semibold text-ios-label-secondary uppercase tracking-wide mb-2">
+            Period
+          </label>
+          <div className="inline-flex p-1 bg-ios-gray-6 rounded-xl">
+            <button
+              onClick={() => handlePeriodTypeChange('weekly')}
+              className={`px-6 py-2 rounded-lg text-ios-body font-semibold transition-all ${
+                periodType === 'weekly'
+                  ? 'bg-white text-ios-label-primary shadow-sm'
+                  : 'text-ios-label-secondary'
+              }`}
+            >
+              Weekly
+            </button>
+            <button
+              onClick={() => handlePeriodTypeChange('monthly')}
+              className={`px-6 py-2 rounded-lg text-ios-body font-semibold transition-all ${
+                periodType === 'monthly'
+                  ? 'bg-white text-ios-label-primary shadow-sm'
+                  : 'text-ios-label-secondary'
+              }`}
+            >
+              Monthly
+            </button>
+          </div>
+        </div>
+
+        {/* Date Range - Minimal Apple Style */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label className="block text-ios-caption1 font-semibold text-ios-label-secondary uppercase tracking-wide mb-2">
+              Start
+            </label>
+            <div className="relative">
+              <Icon name="calendar" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ios-label-tertiary pointer-events-none" />
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => handleStartDateChange(e.target.value)}
-                className="input"
+                className="input pl-10 text-ios-body"
                 max={endDate || undefined}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                End Date
-              </label>
+          </div>
+          <div>
+            <label className="block text-ios-caption1 font-semibold text-ios-label-secondary uppercase tracking-wide mb-2">
+              End
+            </label>
+            <div className="relative">
+              <Icon name="calendar" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ios-label-tertiary pointer-events-none" />
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => handleEndDateChange(e.target.value)}
-                className="input"
+                className="input pl-10 text-ios-body"
                 min={startDate || undefined}
                 max={new Date().toISOString().split('T')[0]}
               />
             </div>
           </div>
+        </div>
 
-          {/* Auto-generated Title */}
-          {title && (
-            <div className="p-4 bg-secondary/5 rounded-xl border border-secondary/20">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Retrospective Title
-              </label>
-              <div className="flex items-center space-x-2">
-                <Icon name="calendar" size={18} className="text-secondary" />
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="flex-1 bg-transparent border-none focus:outline-none text-lg font-medium text-gray-900"
-                  placeholder="Edit title..."
-                />
-              </div>
+        {/* Auto-generated Title - Subtle */}
+        {title && (
+          <div className="p-4 bg-gradient-to-br from-ios-purple/5 to-ios-pink/5 rounded-2xl border border-ios-purple/10">
+            <div className="flex items-center space-x-2">
+              <Icon name="doc.text" size={18} className="text-ios-purple" />
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="flex-1 bg-transparent border-none focus:outline-none text-ios-headline font-semibold text-ios-label-primary placeholder:text-ios-label-tertiary"
+                placeholder="Edit title..."
+              />
             </div>
-          )}
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-6">
-          <div className="flex justify-between text-sm mb-2">
-            <span className="font-medium text-gray-700">
-              Step {currentStepIndex + 1} of {steps.length}
-            </span>
-            <span className="text-gray-500">{Math.round(progress)}% Complete</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-secondary h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        </div>
+        )}
+      </div>
 
-        {/* Step Indicators */}
-        <div className="flex justify-center space-x-2 mb-8">
+      {/* Progress Indicator - Minimal */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between space-x-4">
           {steps.map((step, index) => (
-            <div
-              key={step}
-              className={`w-3 h-3 rounded-full transition-colors ${
-                index <= currentStepIndex ? 'bg-secondary' : 'bg-gray-300'
-              }`}
-            ></div>
+            <div key={step} className="flex-1">
+              <div className={`h-1 rounded-full transition-all duration-300 ${
+                index <= currentStepIndex
+                  ? 'bg-gradient-to-r from-ios-blue to-ios-teal'
+                  : 'bg-ios-gray-5'
+              }`} />
+              <p className={`text-ios-caption2 mt-1 text-center capitalize ${
+                index === currentStepIndex
+                  ? 'text-ios-blue font-semibold'
+                  : index < currentStepIndex
+                    ? 'text-ios-label-secondary'
+                    : 'text-ios-label-tertiary'
+              }`}>
+                {step}
+              </p>
+            </div>
           ))}
         </div>
       </div>
@@ -779,31 +812,47 @@ export default function NewRetrospectivePage() {
         {renderStep()}
       </div>
 
-      {/* Navigation */}
-      <div className="flex justify-between">
-        <button
-          onClick={handleBack}
-          disabled={currentStepIndex === 0 || aiLoading}
-          className="btn btn-outline disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          ← Back
-        </button>
+      {/* Navigation - Apple Style */}
+      <div className="flex items-center justify-between gap-3">
+        {currentStepIndex > 0 ? (
+          <button
+            onClick={handleBack}
+            disabled={currentStepIndex === 0 || aiLoading}
+            className="btn btn-ghost disabled:opacity-30 disabled:cursor-not-allowed flex items-center space-x-2"
+          >
+            <Icon name="chevron.left" size={16} />
+            <span>Back</span>
+          </button>
+        ) : (
+          <div />
+        )}
 
         {currentStepIndex < steps.length - 1 ? (
           <button
             onClick={handleNext}
             disabled={aiLoading}
-            className="btn btn-primary disabled:opacity-50"
+            className="btn btn-primary disabled:opacity-50 flex items-center space-x-2"
           >
-            {aiLoading ? 'Processing...' : 'Next →'}
+            <span>Continue</span>
+            <Icon name="chevron.right" size={16} />
           </button>
         ) : (
           <button
             onClick={handleSave}
             disabled={loading || aiLoading}
-            className="btn btn-primary disabled:opacity-50"
+            className="btn btn-secondary disabled:opacity-50 flex items-center space-x-2"
           >
-            {loading ? 'Saving...' : 'Complete Retrospective ✓'}
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Icon name="checkmark.circle.fill" size={18} />
+                <span>Complete</span>
+              </>
+            )}
           </button>
         )}
       </div>

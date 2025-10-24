@@ -11,7 +11,7 @@ type AIInsightsProps = {
 type CombinedInsights = {
   wellbeingScore: number
   wellbeingTrend: 'improving' | 'stable' | 'declining'
-  topThemes: { theme: string; frequency: number }[]
+  topThemes: { theme: string; category: 'strength' | 'growth' }[]
   keyRecommendation: string
 }
 
@@ -22,8 +22,8 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
 
   const loadInsights = useCallback(async () => {
     // Safety check: Don't call API if user doesn't have enough retrospectives
-    if (retroCount < 2) {
-      console.log('⚠️ Skipping AI insights API call - need at least 2 retrospectives (found:', retroCount, ')')
+    if (retroCount < 1) {
+      console.log('⚠️ Skipping AI insights API call - need at least 1 retrospective (found:', retroCount, ')')
       setLoading(false)
       setInsights(null)
       return
@@ -75,17 +75,53 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
   if (loading) {
     return (
       <div className="card animate-fade-in">
-        <div className="flex items-center space-x-3 mb-4">
+        <div className="flex items-center space-x-3 mb-6">
           <div className="p-2 rounded-xl bg-gradient-to-br from-ios-purple/10 to-ios-pink/10">
-            <Icon name="sparkles" size={24} className="text-ios-purple" />
+            <Icon name="sparkles" size={24} className="text-ios-purple animate-pulse" />
           </div>
           <div>
             <h3 className="text-ios-title-3 text-ios-label-primary">AI Insights</h3>
             <p className="text-ios-footnote text-ios-label-secondary">Analyzing your progress...</p>
           </div>
         </div>
-        <div className="flex items-center justify-center py-8">
-          <div className="w-8 h-8 border-3 border-ios-purple/30 border-t-ios-purple rounded-full animate-spin" />
+
+        {/* Skeleton Loading Animation */}
+        <div className="space-y-6">
+          {/* Well-being Score Skeleton */}
+          <div className="p-6 bg-gradient-to-br from-ios-purple/5 to-ios-pink/5 rounded-2xl border border-ios-purple/10 animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-3 w-24 bg-ios-gray-5 rounded" />
+                <div className="h-12 w-32 bg-ios-gray-5 rounded" />
+              </div>
+              <div className="space-y-2 text-right">
+                <div className="h-3 w-16 bg-ios-gray-5 rounded ml-auto" />
+                <div className="h-6 w-24 bg-ios-gray-5 rounded" />
+              </div>
+            </div>
+          </div>
+
+          {/* Patterns Skeleton */}
+          <div className="space-y-3">
+            <div className="h-4 w-32 bg-ios-gray-5 rounded" />
+            <div className="space-y-2">
+              <div className="h-12 bg-ios-gray-5 rounded-xl animate-pulse" />
+              <div className="h-12 bg-ios-gray-5 rounded-xl animate-pulse delay-75" />
+              <div className="h-12 bg-ios-gray-5 rounded-xl animate-pulse delay-150" />
+            </div>
+          </div>
+
+          {/* Recommendation Skeleton */}
+          <div className="p-4 bg-gradient-to-r from-ios-orange/5 to-ios-yellow/5 rounded-xl border border-ios-orange/10 animate-pulse">
+            <div className="flex items-start space-x-3">
+              <div className="w-5 h-5 bg-ios-gray-5 rounded-full mt-1" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-20 bg-ios-gray-5 rounded" />
+                <div className="h-3 w-full bg-ios-gray-5 rounded" />
+                <div className="h-3 w-3/4 bg-ios-gray-5 rounded" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -98,7 +134,7 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
   }
 
   // Show demo/preview when user doesn't have enough retrospectives
-  if (!insights && retroCount < 2) {
+  if (!insights && retroCount < 1) {
     return (
       <div className="card animate-fade-in">
         {/* Header */}
@@ -140,20 +176,37 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
               </div>
             </div>
 
-            {/* Demo Themes */}
-            <div className="mb-6">
-              <div className="flex items-center space-x-2 mb-3">
-                <Icon name="list.bullet" size={18} className="text-ios-blue" />
-                <h4 className="text-ios-headline text-ios-label-primary font-semibold">Recurring Patterns</h4>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between p-3 bg-ios-gray-6 rounded-xl">
-                  <span className="text-ios-body text-ios-label-primary">Time management</span>
-                  <span className="text-ios-caption2 px-2 py-1 rounded-md bg-ios-blue/10 text-ios-blue font-medium">3x</span>
+            {/* Demo Patterns */}
+            <div className="mb-6 space-y-4">
+              {/* Demo Strengths */}
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Icon name="star.fill" size={16} className="text-ios-green" />
+                  <h4 className="text-ios-subheadline text-ios-label-primary font-semibold">Your Strengths</h4>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-ios-gray-6 rounded-xl">
-                  <span className="text-ios-body text-ios-label-primary">Team collaboration</span>
-                  <span className="text-ios-caption2 px-2 py-1 rounded-md bg-ios-blue/10 text-ios-blue font-medium">2x</span>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-ios-green/5 to-ios-green/10 rounded-xl border border-ios-green/20">
+                    <Icon name="checkmark.circle.fill" size={18} className="text-ios-green" />
+                    <span className="text-ios-body text-ios-label-primary">Strong time management</span>
+                  </div>
+                  <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-ios-green/5 to-ios-green/10 rounded-xl border border-ios-green/20">
+                    <Icon name="checkmark.circle.fill" size={18} className="text-ios-green" />
+                    <span className="text-ios-body text-ios-label-primary">Effective communication</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Demo Growth Areas */}
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Icon name="chart.bar.fill" size={16} className="text-ios-blue" />
+                  <h4 className="text-ios-subheadline text-ios-label-primary font-semibold">Growth Areas</h4>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-ios-blue/5 to-ios-blue/10 rounded-xl border border-ios-blue/20">
+                    <Icon name="arrow.up.circle.fill" size={18} className="text-ios-blue" />
+                    <span className="text-ios-body text-ios-label-primary">Work-life balance</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -182,14 +235,14 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
                 Unlock AI Insights
               </h3>
               <p className="text-ios-body text-ios-label-secondary mb-6 leading-relaxed">
-                Create {2 - retroCount} more {retroCount === 1 ? 'retrospective' : 'retrospectives'} to unlock personalized AI insights about your growth patterns, well-being trends, and focus areas.
+                Create your first retrospective to unlock personalized AI insights about your growth patterns, well-being trends, and focus areas.
               </p>
               <div className="flex items-center justify-center space-x-2 text-ios-subheadline text-ios-purple font-semibold">
-                <span>{retroCount} / 2 retrospectives</span>
+                <span>{retroCount} / 1 retrospective</span>
                 <div className="flex-1 max-w-[120px] h-2 bg-ios-gray-5 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-ios-purple to-ios-pink transition-all duration-500"
-                    style={{ width: `${(retroCount / 2) * 100}%` }}
+                    style={{ width: `${(retroCount / 1) * 100}%` }}
                   />
                 </div>
               </div>
@@ -273,23 +326,48 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
         </div>
       </div>
 
-      {/* Top Themes */}
+      {/* Strengths and Growth Areas */}
       {insights.topThemes.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center space-x-2 mb-3">
-            <Icon name="list.bullet" size={18} className="text-ios-blue" />
-            <h4 className="text-ios-headline text-ios-label-primary font-semibold">Recurring Patterns</h4>
-          </div>
-          <div className="space-y-2">
-            {insights.topThemes.map((theme, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-ios-gray-6 rounded-xl">
-                <span className="text-ios-body text-ios-label-primary">{theme.theme}</span>
-                <span className="text-ios-caption2 px-2 py-1 rounded-md bg-ios-blue/10 text-ios-blue font-medium">
-                  {theme.frequency}x
-                </span>
+        <div className="mb-6 space-y-4">
+          {/* Strengths */}
+          {insights.topThemes.filter(t => t.category === 'strength').length > 0 && (
+            <div>
+              <div className="flex items-center space-x-2 mb-2">
+                <Icon name="star.fill" size={16} className="text-ios-green" />
+                <h4 className="text-ios-subheadline text-ios-label-primary font-semibold">Your Strengths</h4>
               </div>
-            ))}
-          </div>
+              <div className="space-y-2">
+                {insights.topThemes
+                  .filter(t => t.category === 'strength')
+                  .map((theme, idx) => (
+                    <div key={idx} className="flex items-center space-x-2 p-3 bg-gradient-to-r from-ios-green/5 to-ios-green/10 rounded-xl border border-ios-green/20">
+                      <Icon name="checkmark.circle.fill" size={18} className="text-ios-green flex-shrink-0" />
+                      <span className="text-ios-body text-ios-label-primary">{theme.theme}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Growth Areas */}
+          {insights.topThemes.filter(t => t.category === 'growth').length > 0 && (
+            <div>
+              <div className="flex items-center space-x-2 mb-2">
+                <Icon name="chart.bar.fill" size={16} className="text-ios-blue" />
+                <h4 className="text-ios-subheadline text-ios-label-primary font-semibold">Growth Areas</h4>
+              </div>
+              <div className="space-y-2">
+                {insights.topThemes
+                  .filter(t => t.category === 'growth')
+                  .map((theme, idx) => (
+                    <div key={idx} className="flex items-center space-x-2 p-3 bg-gradient-to-r from-ios-blue/5 to-ios-blue/10 rounded-xl border border-ios-blue/20">
+                      <Icon name="arrow.up.circle.fill" size={18} className="text-ios-blue flex-shrink-0" />
+                      <span className="text-ios-body text-ios-label-primary">{theme.theme}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

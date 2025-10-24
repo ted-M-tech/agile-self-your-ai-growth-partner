@@ -48,14 +48,14 @@ export async function POST(req: NextRequest) {
 
     console.log(`📊 User ${userId} has ${retroCount} completed retrospectives (out of ${allRetroCount} total)`)
 
-    if (!retroCount || retroCount < 2) {
-      console.log(`⚠️ Not enough retrospectives for insights (found ${retroCount || 0}, need 2)`)
+    if (!retroCount || retroCount < 1) {
+      console.log(`⚠️ Not enough retrospectives for insights (found ${retroCount || 0}, need 1)`)
       return NextResponse.json(
         {
-          error: `Need at least 2 retrospectives for insights (found ${retroCount || 0})`,
-          userMessage: `Create ${2 - (retroCount || 0)} more retrospective${(retroCount || 0) === 1 ? '' : 's'} to unlock AI insights`,
+          error: `Need at least 1 retrospective for insights (found ${retroCount || 0})`,
+          userMessage: `Create your first retrospective to unlock AI insights`,
           retroCount: retroCount || 0,
-          required: 2
+          required: 1
         },
         { status: 400 }
       )
@@ -173,11 +173,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Combine results
+    // Combine results - keep only theme and category for frontend
     const combinedInsights = {
       wellbeingScore: sentiment.wellbeingScore || 50,
       wellbeingTrend: sentiment.sentimentTrend || 'stable',
-      topThemes: patterns.recurringThemes?.slice(0, 3) || [],
+      topThemes: (patterns.recurringThemes || []).map(t => ({
+        theme: t.theme,
+        category: t.category
+      })),
       keyRecommendation: patterns.recommendations?.[0] || 'Keep reflecting regularly',
       trends: patterns.trends || [],
       allRecommendations: patterns.recommendations || []

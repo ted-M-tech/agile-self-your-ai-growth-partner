@@ -71,6 +71,14 @@ body {
     @apply bg-black/10;
   }
 
+  .btn-outline {
+    @apply bg-transparent border-2 border-gray-300 text-gray-700;
+  }
+
+  .btn-outline:hover {
+    @apply border-gray-400 bg-gray-50;
+  }
+
   /* iOS-style cards with glass morphism */
   .card {
     @apply bg-white/80 backdrop-blur-2xl rounded-2xl p-6 border border-black/5;

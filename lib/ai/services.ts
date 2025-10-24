@@ -273,37 +273,46 @@ Problems: ${retro.problems.join('; ')}
 Tries: ${retro.tries.join('; ')}
 `).join('\n')}
 
-Analyze these retrospectives and provide:
+Analyze these retrospectives and provide actionable insights:
 
-1. RECURRING THEMES: Identify 3-5 themes that appear multiple times
-   - Theme name
-   - How many times it appears (frequency)
-   - Category (keep/problem/try)
-   - Examples from the data
+1. STRENGTHS (2-3 patterns): What they consistently do well (from Keeps)
+   - Short, clear description (e.g., "Strong time management", "Effective communication")
+   - NO frequency numbers - just the pattern
+   - Category must be "strength"
 
-2. TRENDS: Identify 2-4 trends over time
-   - What's improving, declining, or staying stable
-   - Brief description
+2. GROWTH AREAS (2-3 patterns): What they're consistently working on (from Problems)
+   - Short, clear description (e.g., "Work-life balance", "Team delegation")
+   - NO frequency numbers - just the pattern
+   - Category must be "growth"
 
-3. RECOMMENDATIONS: 3-5 personalized recommendations for continued growth
+3. TRENDS: 1-2 meaningful trends over time
+   - Brief, clear description of what's changing
+   - Direction: improving/declining/stable
 
-Format your response as JSON:
+4. RECOMMENDATIONS: 2-3 personalized, actionable recommendations
+
+IMPORTANT:
+- Keep descriptions short and clear (2-5 words max)
+- No frequency counts or "appears X times" language
+- Focus on what's useful for the user to know
+- Use simple, encouraging language
+
+Format as JSON:
 {
   "recurringThemes": [
     {
-      "theme": "theme name",
-      "frequency": number,
-      "category": "keep|problem|try",
-      "examples": ["example1", "example2"]
+      "theme": "2-5 word description",
+      "category": "strength|growth",
+      "examples": ["specific example from data"]
     }
   ],
   "trends": [
     {
-      "description": "trend description",
+      "description": "brief trend description",
       "direction": "improving|declining|stable"
     }
   ],
-  "recommendations": ["rec1", "rec2", ...]
+  "recommendations": ["actionable recommendation 1", "actionable recommendation 2"]
 }
 `
 

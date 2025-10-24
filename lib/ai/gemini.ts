@@ -36,8 +36,7 @@ export type AISuggestion = {
 export type PatternAnalysis = {
   recurringThemes: {
     theme: string
-    frequency: number
-    category: 'keep' | 'problem' | 'try'
+    category: 'strength' | 'growth'
     examples: string[]
   }[]
   trends: {
