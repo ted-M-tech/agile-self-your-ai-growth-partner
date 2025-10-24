@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/client'
 import { useUser } from '@/lib/auth/hooks'
 import { format } from 'date-fns'
 import Icon from '@/components/Icon'
+import DashboardAIInsights from '@/components/DashboardAIInsights'
 
 type Retrospective = {
   id: string
@@ -234,6 +235,11 @@ export default function DashboardPage() {
             </div>
           </Link>
         </div>
+      </div>
+
+      {/* AI Insights Section - Auto-loads */}
+      <div className="mb-10">
+        <DashboardAIInsights userId={user!.id} retroCount={retrospectives.length} />
       </div>
 
       {/* Recent Retrospectives */}
