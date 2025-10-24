@@ -99,6 +99,21 @@ CREATE TABLE public.actions (
 );
 
 -- =====================================================
+-- AI INSIGHTS CACHE TABLE
+-- =====================================================
+-- Stores cached AI insights to reduce API calls
+CREATE TABLE public.ai_insights_cache (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  insight_type TEXT CHECK (insight_type IN ('patterns', 'sentiment', 'combined')) NOT NULL,
+  data JSONB NOT NULL,
+  retrospective_count INTEGER NOT NULL, -- Number of retros analyzed
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, insight_type)
+);
+
+-- =====================================================
 -- INDEXES FOR PERFORMANCE
 -- =====================================================
 CREATE INDEX idx_retrospectives_user_id ON public.retrospectives(user_id);
@@ -113,6 +128,8 @@ CREATE INDEX idx_actions_user_id ON public.actions(user_id);
 CREATE INDEX idx_actions_completed ON public.actions(is_completed, user_id);
 CREATE INDEX idx_actions_retrospective_id ON public.actions(retrospective_id);
 
+CREATE INDEX idx_ai_insights_cache_user_id ON public.ai_insights_cache(user_id, insight_type);
+
 -- =====================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- =====================================================
@@ -125,6 +142,7 @@ ALTER TABLE public.keeps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.problems ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.actions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_insights_cache ENABLE ROW LEVEL SECURITY;
 
 -- Users table policies
 CREATE POLICY "Users can view own profile"
@@ -285,6 +303,23 @@ CREATE POLICY "Users can delete own actions"
   ON public.actions FOR DELETE
   USING (auth.uid() = user_id);
 
+-- AI insights cache policies
+CREATE POLICY "Users can view own insights cache"
+  ON public.ai_insights_cache FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own insights cache"
+  ON public.ai_insights_cache FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own insights cache"
+  ON public.ai_insights_cache FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own insights cache"
+  ON public.ai_insights_cache FOR DELETE
+  USING (auth.uid() = user_id);
+
 -- =====================================================
 -- FUNCTIONS
 -- =====================================================
@@ -311,6 +346,11 @@ CREATE TRIGGER update_user_preferences_updated_at
 
 CREATE TRIGGER update_retrospectives_updated_at
   BEFORE UPDATE ON public.retrospectives
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_ai_insights_cache_updated_at
+  BEFORE UPDATE ON public.ai_insights_cache
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 

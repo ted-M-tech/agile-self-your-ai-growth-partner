@@ -31,11 +31,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch keeps, problems, tries
-    const [
-      { data: keeps },
-      { data: problems },
-      { data: tries }
-    ] = await Promise.all([
+    const [keepsResult, problemsResult, triesResult] = await Promise.all([
       supabase
         .from('keeps')
         .select('text')
@@ -52,6 +48,10 @@ export async function POST(req: NextRequest) {
         .eq('retrospective_id', retrospectiveId)
         .order('order_index')
     ])
+
+    const keeps = keepsResult.data as Array<{ text: string }> | null
+    const problems = problemsResult.data as Array<{ text: string }> | null
+    const tries = triesResult.data as Array<{ text: string }> | null
 
     // Generate AI summary
     const summary = await summarizeRetrospective(

@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       .eq('user_id', userId)
       .eq('status', 'completed')
       .order('created_at', { ascending: true })
-      .limit(limit)
+      .limit(limit) as { data: Array<{ id: string; created_at: string }> | null; error: any }
 
     if (retroError) {
       return NextResponse.json(
@@ -40,11 +40,8 @@ export async function POST(req: NextRequest) {
 
     // Fetch keeps and problems for each retrospective
     const retrospectivesWithData = await Promise.all(
-      retrospectives.map(async (retro) => {
-        const [
-          { data: keeps },
-          { data: problems }
-        ] = await Promise.all([
+      (retrospectives || []).map(async (retro) => {
+        const [keepsResult, problemsResult] = await Promise.all([
           supabase
             .from('keeps')
             .select('text')
@@ -54,6 +51,9 @@ export async function POST(req: NextRequest) {
             .select('text')
             .eq('retrospective_id', retro.id)
         ])
+
+        const keeps = keepsResult.data as Array<{ text: string }> | null
+        const problems = problemsResult.data as Array<{ text: string }> | null
 
         return {
           created_at: retro.created_at,

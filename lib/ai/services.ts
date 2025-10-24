@@ -252,7 +252,7 @@ Format your response as JSON array:
 export async function analyzePatterns(
   retrospectives: Array<{
     id: string
-    title: string
+    title: string | null
     created_at: string
     keeps: string[]
     problems: string[]

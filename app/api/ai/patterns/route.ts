@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       .eq('user_id', userId)
       .eq('status', 'completed')
       .order('created_at', { ascending: true })
-      .limit(limit)
+      .limit(limit) as { data: Array<{ id: string; title: string | null; created_at: string }> | null; error: any }
 
     if (retroError) {
       console.error('Error fetching retrospectives:', retroError)
@@ -43,12 +43,8 @@ export async function POST(req: NextRequest) {
 
     // Fetch all keeps, problems, tries for each retrospective
     const retrospectivesWithData = await Promise.all(
-      retrospectives.map(async (retro) => {
-        const [
-          { data: keeps },
-          { data: problems },
-          { data: tries }
-        ] = await Promise.all([
+      (retrospectives || []).map(async (retro) => {
+        const [keepsResult, problemsResult, triesResult] = await Promise.all([
           supabase
             .from('keeps')
             .select('text')
@@ -62,6 +58,10 @@ export async function POST(req: NextRequest) {
             .select('text')
             .eq('retrospective_id', retro.id)
         ])
+
+        const keeps = keepsResult.data as Array<{ text: string }> | null
+        const problems = problemsResult.data as Array<{ text: string }> | null
+        const tries = triesResult.data as Array<{ text: string }> | null
 
         return {
           ...retro,

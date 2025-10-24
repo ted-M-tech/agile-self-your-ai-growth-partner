@@ -32,35 +32,31 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
     setLoading(true)
     setError(null)
     try {
-      // Load both patterns and sentiment in parallel
-      const [patternsRes, sentimentRes] = await Promise.all([
-        fetch('/api/ai/patterns', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, limit: 10 })
-        }),
-        fetch('/api/ai/sentiment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, limit: 10 })
-        })
-      ])
+      // Use new cached insights API
+      const response = await fetch('/api/ai/insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, limit: 10 })
+      })
 
-      const [patternsData, sentimentData] = await Promise.all([
-        patternsRes.json(),
-        sentimentRes.json()
-      ])
+      const data = await response.json()
 
-      if (patternsRes.ok && sentimentRes.ok) {
-        // Combine the most important insights
+      if (response.ok) {
         setInsights({
-          wellbeingScore: sentimentData.wellbeingScore || 50,
-          wellbeingTrend: sentimentData.sentimentTrend || 'stable',
-          topThemes: patternsData.recurringThemes?.slice(0, 3) || [],
-          keyRecommendation: patternsData.recommendations?.[0] || 'Keep reflecting regularly'
+          wellbeingScore: data.wellbeingScore || 50,
+          wellbeingTrend: data.wellbeingTrend || 'stable',
+          topThemes: data.topThemes?.slice(0, 3) || [],
+          keyRecommendation: data.keyRecommendation || 'Keep reflecting regularly'
         })
+
+        // Log if using cache
+        if (data.cached) {
+          console.log('Loaded insights from cache (last updated:', data.cachedAt, ')')
+        } else {
+          console.log('Generated fresh insights')
+        }
       } else {
-        throw new Error('Failed to load insights')
+        throw new Error(data.error || 'Failed to load insights')
       }
     } catch (err: any) {
       console.error('Error loading AI insights:', err)
@@ -97,11 +93,11 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
     return null
   }
 
-  const getTrendIcon = (trend: string) => {
+  const getTrendIcon = (trend: string): 'chevron.right' | 'chevron.down' => {
     switch (trend) {
-      case 'improving': return 'arrow.up.right'
-      case 'declining': return 'arrow.down.right'
-      default: return 'arrow.right'
+      case 'improving': return 'chevron.right'
+      case 'declining': return 'chevron.down'
+      default: return 'chevron.right'
     }
   }
 
@@ -154,7 +150,9 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
               <Icon
                 name={getTrendIcon(insights.wellbeingTrend)}
                 size={24}
-                className={getTrendColor(insights.wellbeingTrend)}
+                className={`${getTrendColor(insights.wellbeingTrend)} ${
+                  insights.wellbeingTrend === 'improving' ? '-rotate-90' : ''
+                }`}
               />
               <span className={`text-ios-headline font-semibold capitalize ${getTrendColor(insights.wellbeingTrend)}`}>
                 {insights.wellbeingTrend}
@@ -168,7 +166,7 @@ export default function DashboardAIInsights({ userId, retroCount }: AIInsightsPr
       {insights.topThemes.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center space-x-2 mb-3">
-            <Icon name="repeat" size={18} className="text-ios-blue" />
+            <Icon name="list.bullet" size={18} className="text-ios-blue" />
             <h4 className="text-ios-headline text-ios-label-primary font-semibold">Recurring Patterns</h4>
           </div>
           <div className="space-y-2">

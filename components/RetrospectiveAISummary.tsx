@@ -86,12 +86,12 @@ export default function RetrospectiveAISummary({ retrospectiveId, userId }: Retr
     }
   }
 
-  const getSentimentIcon = (sentiment: string) => {
+  const getSentimentIcon = (sentiment: string): 'checkmark.circle.fill' | 'xmark.circle.fill' | 'star' => {
     switch (sentiment) {
-      case 'positive': return 'face.smiling'
-      case 'negative': return 'face.frowning'
-      case 'mixed': return 'face.neutral'
-      default: return 'face.neutral'
+      case 'positive': return 'checkmark.circle.fill'
+      case 'negative': return 'xmark.circle.fill'
+      case 'mixed': return 'star'
+      default: return 'star'
     }
   }
 
@@ -172,7 +172,7 @@ export default function RetrospectiveAISummary({ retrospectiveId, userId }: Retr
           {/* Summary */}
           <div className="p-4 bg-gradient-to-br from-ios-blue/5 to-ios-teal/5 rounded-xl border border-ios-blue/10">
             <h4 className="text-ios-headline text-ios-label-primary mb-2 flex items-center space-x-2">
-              <Icon name="text.quote" size={16} className="text-ios-blue" />
+              <Icon name="doc.text" size={16} className="text-ios-blue" />
               <span>Summary</span>
             </h4>
             <p className="text-ios-body text-ios-label-primary leading-relaxed">
@@ -184,7 +184,7 @@ export default function RetrospectiveAISummary({ retrospectiveId, userId }: Retr
           {summary.keyInsights.length > 0 && (
             <div>
               <h4 className="text-ios-headline text-ios-label-primary mb-3 flex items-center space-x-2">
-                <Icon name="key" size={16} className="text-ios-orange" />
+                <Icon name="lightbulb.fill" size={16} className="text-ios-orange" />
                 <span>Key Insights</span>
               </h4>
               <div className="space-y-2">
@@ -233,7 +233,7 @@ export default function RetrospectiveAISummary({ retrospectiveId, userId }: Retr
       {!loading && !error && !summary && suggestions.length === 0 && (
         <div className="text-center py-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-ios-teal/10 mb-3">
-            <Icon name="wand.and.stars" size={32} className="text-ios-teal" />
+            <Icon name="sparkles" size={32} className="text-ios-teal" />
           </div>
           <p className="text-ios-body text-ios-label-secondary mb-1">
             Get AI-powered insights

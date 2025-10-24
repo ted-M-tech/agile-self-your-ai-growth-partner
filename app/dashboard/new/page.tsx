@@ -523,7 +523,7 @@ export default function NewRetrospectivePage() {
                   {aiSummary.suggestions.length > 0 && (
                     <div className="card bg-gradient-to-br from-ios-purple/5 to-ios-purple/10 border border-ios-purple/20">
                       <div className="flex items-center space-x-2 mb-3">
-                        <Icon name="arrow.right.circle.fill" size={16} className="text-ios-purple" />
+                        <Icon name="arrow.right" size={16} className="text-ios-purple" />
                         <h4 className="text-ios-subheadline font-semibold text-ios-purple">What to Try</h4>
                       </div>
                       <div className="space-y-2">
