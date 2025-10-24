@@ -40,6 +40,8 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
+      console.log('🚀 Dashboard: Starting fetch for user:', user!.id)
+
       // Fetch recent retrospectives (for display)
       const { data: retros, error: retrosError } = await supabase
         .from('retrospectives')
@@ -48,7 +50,11 @@ export default function DashboardPage() {
         .order('created_at', { ascending: false })
         .limit(5)
 
-      if (retrosError) throw retrosError
+      console.log('📝 Dashboard: Recent retros fetched:', retros?.length || 0)
+      if (retrosError) {
+        console.error('❌ Dashboard: Error fetching recent retros:', retrosError)
+        throw retrosError
+      }
 
       // Get actual total count of all retrospectives
       const { count: totalRetroCount } = await supabase
@@ -57,11 +63,17 @@ export default function DashboardPage() {
         .eq('user_id', user!.id)
 
       // Get count of completed retrospectives (for AI insights)
-      const { count: completedRetroCount } = await supabase
+      console.log('🔍 Dashboard: Fetching completed retrospectives for user:', user!.id)
+      const { count: completedRetroCount, error: completedRetroError } = await supabase
         .from('retrospectives')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user!.id)
         .eq('status', 'completed')
+
+      console.log('📊 Dashboard: Completed retro count:', completedRetroCount)
+      if (completedRetroError) {
+        console.error('❌ Dashboard: Error fetching completed retrospectives:', completedRetroError)
+      }
 
       // Fetch actions count
       const { count: totalActions } = await supabase

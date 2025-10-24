@@ -6,16 +6,28 @@ export async function POST(req: NextRequest) {
   try {
     const { userId, limit = 10 } = await req.json()
 
+    console.log('🔍 AI Insights API called with userId:', userId)
+
     if (!userId) {
+      console.error('❌ Missing userId in request')
       return NextResponse.json(
-        { error: 'Missing userId' },
+        { error: 'Missing userId', userMessage: 'Unable to load AI insights. Please refresh the page.' },
         { status: 400 }
       )
     }
 
     const supabase = createServerClient()
 
-    // Get current retrospective count
+    // DEBUG: Check all retrospectives for this user (without status filter)
+    const { data: allRetros, count: allRetroCount } = await supabase
+      .from('retrospectives')
+      .select('id, status, user_id', { count: 'exact' })
+      .eq('user_id', userId)
+
+    console.log(`🔍 DEBUG: User ${userId} has ${allRetroCount || 0} total retrospectives`)
+    console.log(`🔍 DEBUG: Retrospectives:`, allRetros)
+
+    // Get current retrospective count (with status filter)
     const { count: retroCount, error: countError } = await supabase
       .from('retrospectives')
       .select('*', { count: 'exact', head: true })
@@ -23,34 +35,55 @@ export async function POST(req: NextRequest) {
       .eq('status', 'completed')
 
     if (countError) {
-      console.error('Error counting retrospectives:', countError)
+      console.error('❌ Error counting retrospectives:', countError)
       return NextResponse.json(
-        { error: 'Failed to count retrospectives' },
+        {
+          error: 'Failed to count retrospectives',
+          userMessage: 'Unable to access your retrospectives. Please try again later.',
+          details: countError.message
+        },
         { status: 500 }
       )
     }
 
-    console.log(`User ${userId} has ${retroCount} retrospectives`)
+    console.log(`📊 User ${userId} has ${retroCount} completed retrospectives (out of ${allRetroCount} total)`)
 
     if (!retroCount || retroCount < 2) {
+      console.log(`⚠️ Not enough retrospectives for insights (found ${retroCount || 0}, need 2)`)
       return NextResponse.json(
-        { error: `Need at least 2 retrospectives for insights (found ${retroCount || 0})` },
+        {
+          error: `Need at least 2 retrospectives for insights (found ${retroCount || 0})`,
+          userMessage: `Create ${2 - (retroCount || 0)} more retrospective${(retroCount || 0) === 1 ? '' : 's'} to unlock AI insights`,
+          retroCount: retroCount || 0,
+          required: 2
+        },
         { status: 400 }
       )
     }
 
-    // Check cache first
-    // @ts-ignore - Type definitions don't include ai_insights_cache yet
-    const { data: cachedInsight, error: cacheError } = await supabase
-      .from('ai_insights_cache')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('insight_type', 'combined')
-      .single()
+    // Check cache first (gracefully handle if table doesn't exist)
+    let cachedInsight = null
+    let cacheError = null
+
+    try {
+      // @ts-ignore - Type definitions don't include ai_insights_cache yet
+      const result = await supabase
+        .from('ai_insights_cache')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('insight_type', 'combined')
+        .single()
+
+      cachedInsight = result.data
+      cacheError = result.error
+    } catch (err: any) {
+      console.warn('⚠️ Cache table might not exist:', err.message)
+      // Continue without cache if table doesn't exist
+    }
 
     // If cache exists and retrospective count hasn't changed, return cached data
     if (cachedInsight && (cachedInsight as any).retrospective_count === retroCount && !cacheError) {
-      console.log(`Returning cached insights for user ${userId}`)
+      console.log(`✅ Returning cached insights for user ${userId}`)
       return NextResponse.json({
         ...(cachedInsight as any).data,
         cached: true,
@@ -58,7 +91,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    console.log(`Generating new insights for user ${userId} (cache ${cachedInsight ? 'outdated' : 'missing'})`)
+    console.log(`✨ Generating new insights for user ${userId} (cache ${cachedInsight ? 'outdated' : 'missing'})`)
 
     // Fetch recent retrospectives
     const { data: retrospectives, error: retroError } = await supabase
@@ -70,12 +103,18 @@ export async function POST(req: NextRequest) {
       .limit(limit) as { data: Array<{ id: string; title: string | null; created_at: string }> | null; error: any }
 
     if (retroError || !retrospectives || retrospectives.length < 2) {
-      console.error('Error fetching retrospectives:', retroError)
+      console.error('❌ Error fetching retrospectives:', retroError)
       return NextResponse.json(
-        { error: 'Failed to fetch retrospectives' },
+        {
+          error: 'Failed to fetch retrospectives',
+          userMessage: 'Unable to load your retrospectives. Please try again later.',
+          details: retroError?.message
+        },
         { status: 500 }
       )
     }
+
+    console.log(`📝 Fetched ${retrospectives.length} retrospectives with data`)
 
     // Fetch keeps, problems, tries for each retrospective
     const retrospectivesWithData = await Promise.all(
@@ -109,14 +148,30 @@ export async function POST(req: NextRequest) {
     )
 
     // Generate patterns and sentiment in parallel
-    const [patterns, sentiment] = await Promise.all([
-      analyzePatterns(retrospectivesWithData),
-      analyzeSentiment(retrospectivesWithData.map(r => ({
-        created_at: r.created_at,
-        keeps: r.keeps,
-        problems: r.problems
-      })))
-    ])
+    console.log('🤖 Generating AI insights...')
+    let patterns, sentiment
+
+    try {
+      [patterns, sentiment] = await Promise.all([
+        analyzePatterns(retrospectivesWithData),
+        analyzeSentiment(retrospectivesWithData.map(r => ({
+          created_at: r.created_at,
+          keeps: r.keeps,
+          problems: r.problems
+        })))
+      ])
+      console.log('✅ AI insights generated successfully')
+    } catch (aiError: any) {
+      console.error('❌ Error generating AI insights:', aiError)
+      return NextResponse.json(
+        {
+          error: 'Failed to generate AI insights',
+          userMessage: 'Our AI service is temporarily unavailable. Please try again in a few moments.',
+          details: aiError.message
+        },
+        { status: 500 }
+      )
+    }
 
     // Combine results
     const combinedInsights = {
@@ -128,22 +183,27 @@ export async function POST(req: NextRequest) {
       allRecommendations: patterns.recommendations || []
     }
 
-    // Save to cache (upsert)
-    // @ts-ignore - Type definitions don't include ai_insights_cache yet
-    const { error: upsertError } = await supabase.from('ai_insights_cache').upsert({
-        user_id: userId,
-        insight_type: 'combined',
-        data: combinedInsights,
-        retrospective_count: retroCount
-      }, {
-        onConflict: 'user_id,insight_type'
-      })
+    // Save to cache (upsert) - gracefully handle if table doesn't exist
+    try {
+      // @ts-ignore - Type definitions don't include ai_insights_cache yet
+      const { error: upsertError } = await supabase.from('ai_insights_cache').upsert({
+          user_id: userId,
+          insight_type: 'combined',
+          data: combinedInsights,
+          retrospective_count: retroCount
+        }, {
+          onConflict: 'user_id,insight_type'
+        })
 
-    if (upsertError) {
-      console.error('Error caching insights:', upsertError)
-      // Don't fail if caching fails, just return the data
-    } else {
-      console.log(`Cached insights for user ${userId}`)
+      if (upsertError) {
+        console.warn('⚠️ Warning: Could not cache insights:', upsertError.message)
+        // Don't fail if caching fails, just return the data
+      } else {
+        console.log(`💾 Cached insights for user ${userId}`)
+      }
+    } catch (cacheWriteError: any) {
+      console.warn('⚠️ Cache table might not exist, skipping cache:', cacheWriteError.message)
+      // Continue without caching if table doesn't exist
     }
 
     return NextResponse.json({
@@ -151,9 +211,13 @@ export async function POST(req: NextRequest) {
       cached: false
     })
   } catch (error: any) {
-    console.error('Error generating insights:', error)
+    console.error('❌ Unexpected error in AI insights API:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to generate insights' },
+      {
+        error: error.message || 'Failed to generate insights',
+        userMessage: 'An unexpected error occurred while loading AI insights. Please try refreshing the page.',
+        details: error.stack
+      },
       { status: 500 }
     )
   }

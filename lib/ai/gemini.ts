@@ -9,14 +9,14 @@ if (!apiKey) {
 
 export const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null
 
-// Get the Gemini model (using gemini-2.0-flash which is free and fast)
+// Get the Gemini model (using gemini-2.5-flash which is fast and cost-efficient)
 export function getGeminiModel() {
   if (!genAI) {
     throw new Error('Gemini API is not configured. Please add GEMINI_API_KEY to your environment variables.')
   }
-  // Use gemini-2.0-flash - free, fast, and widely available
-  // Note: Model name must include "models/" prefix
-  return genAI.getGenerativeModel({ model: 'models/gemini-2.0-flash' })
+  // Use gemini-2.5-flash - best price-performance ratio for high-volume tasks
+  // Alternative models: gemini-2.5-pro (more complex reasoning), gemini-2.5-flash-lite (faster/cheaper)
+  return genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 }
 
 // Type definitions for AI responses
