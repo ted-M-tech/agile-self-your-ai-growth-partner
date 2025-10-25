@@ -4,46 +4,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Agile Self** is a mobile application for personal self-retrospection using the KPTA (Keep, Problem, Try, Action) framework. The tagline is "Your AI Growth Partner" with the motto "Turn Reflection Into Action."
+**Agile Self** is a web application for personal self-retrospection using the KPTA (Keep, Problem, Try, Action) framework. The tagline is "Your AI Growth Partner" with the motto "Turn Reflection Into Action."
 
 ## Product Architecture
 
-### Two-Phase Development Strategy
+### Development Strategy
 
-**MVP (Phase 1)**: Core KPTA functionality without AI features
+**MVP with AI Integration**: Core KPTA functionality with AI-powered insights from the start
 - User authentication and account management
 - KPTA entry interface (Keep, Problem, Try columns)
 - Action items list with completion tracking
 - Retrospective history view
+- **AI-powered wellbeing scoring** using Gemini API
+- **Sentiment analysis and pattern detection** for personalized insights
+- **Actionable suggestions** based on retrospective data
 - Customizable reminders for weekly/monthly retrospectives
 - Data export capability
-- All features are free in this phase
+- Freemium model: Core features free, advanced AI features premium
 
-**Phase 2**: AI-powered suggestions using Gemini API
-- Recurring theme identification using topic modeling
-- Actionable "Try" suggestions based on Problems
-- Sentiment analysis for well-being insights
-- This becomes the premium tier feature
+### Tech Stack
 
-### Tech Stack Considerations
+The application uses modern web technologies:
 
-The specification outlines these technology choices:
-
-**Mobile**: React Native (with Expo) for cross-platform development
+**Frontend**: React 18+ with TypeScript and Vite for fast development
+**UI Framework**: Tailwind CSS with shadcn/ui component library
 **Backend**: Supabase (BaaS - Backend as a Service) with auto-generated REST APIs
 **Database**: PostgreSQL (via Supabase) - relational database perfect for KPTA relationships
 **Authentication**: Supabase Auth with email/password, social providers, magic links
-**Push Notifications**: Firebase Cloud Messaging (FCM) for reminders
-**AI Service**: Separate microservice for Gemini API integration (Phase 2)
+**AI Service**: Gemini API for wellbeing analysis, sentiment detection, and personalized insights
+**Deployment**: Vercel or Netlify for web hosting with automatic deployments
 
 ### Why Supabase?
 - **Relational data model**: KPTA structure (Keeps → Tries → Actions) is inherently relational
-- **Powerful queries**: PostgreSQL enables complex analytics for Phase 2 AI features
+- **Powerful queries**: PostgreSQL enables complex analytics for AI features
 - **Row-Level Security (RLS)**: Database-level user data isolation
 - **Real-time subscriptions**: Live updates without polling
 - **Full-text search**: Built-in search for retrospective history
 - **Open source**: No vendor lock-in, can self-host if needed
 - **Cost-effective**: Free tier covers 500MB database and 50K MAU
+- **Perfect for web apps**: Excellent TypeScript SDK, instant REST APIs
 
 ## Key Product Principles
 
@@ -56,10 +55,11 @@ The specification outlines these technology choices:
 The critical differentiator is the Action step - converting reflection into concrete actionable items (e.g., "be more organized" → "spend 15 minutes every Sunday planning the week").
 
 ### UI/UX Philosophy
-- Minimalist "writing oasis" design with calm color palette
+- Modern gradient design with backdrop blur effects
 - Visual guidance from reflection (Keep/Problem) to action (Try/Action)
-- Progressive onboarding through first KPTA session
-- Clean, serene interface focused on reducing friction
+- Progressive onboarding through interactive landing page
+- Clean, responsive interface optimized for web browsers
+- Smooth animations and transitions for enhanced user experience
 
 ### Monetization Model
 - Freemium: Core KPTA features are free to build habit
@@ -71,7 +71,7 @@ The critical differentiator is the Action step - converting reflection into conc
 
 The app uses a relational database with the following key tables:
 - `users` - User accounts and profile
-- `user_preferences` - Settings, reminder config, FCM tokens
+- `user_preferences` - Settings, reminder config
 - `retrospectives` - Main KPTA sessions
 - `keeps`, `problems`, `tries` - Individual KPTA entries (normalized)
 - `actions` - Actionable items derived from tries
@@ -80,19 +80,20 @@ The app uses a relational database with the following key tables:
 **Important**: Always implement Row-Level Security (RLS) policies to ensure users can only access their own data.
 
 ### When implementing the KPTA interface:
-- Use a three-column layout for Keep/Problem/Try entry
-- Ensure the flow from Try → Action is seamless and intuitive
-- Action items should automatically populate from Try entries
+- Use a two-column grid layout (Keep/Problem) followed by Try & Actions section
+- Ensure the flow from Try → Action is seamless with inline action creation checkboxes
+- Action items can be created directly from Try entries with optional deadlines
 - Use Supabase real-time subscriptions for live updates (optional)
 - Store entries in separate tables (`keeps`, `problems`, `tries`) with foreign keys to `retrospectives`
+- Implement with React components using Tailwind CSS and shadcn/ui
 
 ### When implementing reminders:
 - Must be user-configurable (weekly or monthly)
-- Should be gentle, non-intrusive notifications
+- For web: Use browser notifications API or email reminders
 - Goal is habit-building, not pressure
-- Store FCM tokens in `user_preferences` table
 - Use Supabase Edge Functions or cron jobs to trigger reminder checks
 - Respect user timezone (stored in preferences)
+- Consider integrating with calendar APIs for advanced users
 
 ### When implementing data queries:
 - Use Supabase client with TypeScript for type safety
@@ -101,21 +102,23 @@ The app uses a relational database with the following key tables:
 - Use indexes on frequently queried columns (user_id, created_at, is_completed)
 - Full-text search is available via PostgreSQL `tsvector` for search features
 
-### When preparing for Phase 2 AI integration:
+### When implementing AI features with Gemini API:
 - PostgreSQL enables powerful temporal analysis queries (date ranges, aggregations)
 - Store full text of entries (not summaries) for NLP processing
 - Use window functions and CTEs for pattern detection
 - Example: Find recurring problems with `GROUP BY text HAVING COUNT(*) > 1`
 - Consider adding `embeddings` column for vector similarity search (pgvector extension)
-- Plan for microservice architecture to isolate Gemini API processing
-- Rate limiting and cost management for Gemini API calls
+- Use Supabase Edge Functions to securely call Gemini API
+- Implement rate limiting and cost management for Gemini API calls
+- Cache AI insights to reduce API calls and improve performance
 
 ### Authentication Implementation:
 - Use Supabase Auth SDK: `@supabase/supabase-js`
-- Social auth providers: Google, Apple (required for iOS)
+- Social auth providers: Google, GitHub, and other OAuth providers
 - Magic links for passwordless login (optional enhancement)
 - JWT tokens are handled automatically by Supabase
 - Session persistence with secure token refresh
+- Implement protected routes using React Router or similar
 
 ### Data Export:
 - Use Supabase query builder with nested selects for complete data export
@@ -124,24 +127,27 @@ The app uses a relational database with the following key tables:
 
 ### UI/UX Implementation Guidelines:
 
-**Color Palette** (from specification):
-- Primary: Deep Blue `#2C3E50`, Soft Teal `#16A085`
-- Background: Off-White `#F9F9F9`, Pure White `#FFFFFF`
-- Text: Primary `#2C3E50`, Secondary `#7F8C8D`
-- Status: Success `#27AE60`, Warning `#F39C12`, Error `#E74C3C`
+**Color Palette** (Figma design):
+- Gradients: `from-blue-600 via-indigo-600 to-purple-700` for hero sections
+- Primary: Blue-600 (`#2563eb`), Indigo-600 (`#4f46e5`), Purple-600 (`#9333ea`)
+- Background: `from-slate-50 via-blue-50 to-slate-50` gradient
+- Cards: White with backdrop blur (`bg-white/60 backdrop-blur-sm`)
+- Text: Slate-900 for headings, Slate-600 for body, Slate-500 for metadata
+- Status Colors: Green for keeps, Red for problems, Purple for tries, Blue for actions
 
 **Typography**:
-- Font: Inter or SF Pro (iOS) / Roboto (Android)
-- H1: 28px Bold, H2: 22px Semi-bold, Body: 16px Regular
+- Font: Inter (web) with fallback to system fonts
+- Use Tailwind's built-in text sizing (text-xl, text-2xl, etc.)
+- Typography defined in globals.css with CSS variables
 
 **Component Patterns**:
-- Use horizontal scrollable 3-column layout for KPTA entry
-- Swipe gestures for delete/edit on action items
-- Subtle shimmer effects for loading (not spinners)
-- 300ms ease-in-out transitions
-- Haptic feedback on action completion
+- Two-column grid for Keep/Problem sections
+- Single column for Try & Actions with inline action creation
+- Backdrop blur effects on cards for modern glass-morphism look
+- Smooth 300ms transitions with framer-motion animations
+- shadcn/ui components for consistent design
 
 **Navigation**:
-- Bottom tab navigation: Dashboard, Actions, History, Settings
-- Gesture-based navigation between KPTA columns
-- Deep linking for push notifications → new retrospective screen
+- Tab-based navigation: Home, New, Actions, History, Settings
+- Badge indicators for pending action counts
+- Responsive design for mobile and desktop browsers
