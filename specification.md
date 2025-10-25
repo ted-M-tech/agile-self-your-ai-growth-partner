@@ -115,7 +115,7 @@ We will adopt a Freemium model to maximize user acquisition and create a clear u
 1. **Landing Page** → Hero section with tagline "Your AI Growth Partner" and feature showcases
 2. **How It Works** → 3-step explanation of KPTA framework with visuals
 3. **CTA** → "Get Started Free" button → Sign Up modal/page
-4. **Sign Up** → Email/password or social OAuth (Google, GitHub)
+4. **Sign Up** → Email/password or social OAuth (Google)
 5. **Dashboard (Empty State)** → Welcome message with "Create Your First Retrospective" button
 6. **First Retrospective** → Guided creation with helpful placeholders and examples
 
