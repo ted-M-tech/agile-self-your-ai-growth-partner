@@ -86,8 +86,8 @@ The AI acts as a "Personal Growth Co-Pilot" by analyzing retrospective data:
 
 ## 6. Tech Stack
 
-- **Frontend Framework**: React 18+ with TypeScript for type safety and better DX
-- **Build Tool**: Vite for fast development and optimized production builds
+- **Frontend Framework**: Next.js 14 with React 18+ and TypeScript for type safety, better DX, and SSR capabilities
+- **Build Tool**: Next.js built-in compiler for fast development and optimized production builds
 - **UI Library**: Tailwind CSS for utility-first styling + shadcn/ui for pre-built components
 - **Animation**: framer-motion for smooth, declarative animations
 - **Charts**: Recharts for wellbeing trend visualization
@@ -95,7 +95,7 @@ The AI acts as a "Personal Growth Co-Pilot" by analyzing retrospective data:
 - **Database**: PostgreSQL (via Supabase) for relational KPTA data with AI analytics support
 - **Authentication**: Supabase Auth with email/password, social providers (Google), and magic links
 - **AI Integration**: Gemini API called via Supabase Edge Functions for secure server-side processing
-- **Deployment**: Vercel (recommended) or Netlify for automatic deployments from Git
+- **Deployment**: Vercel (optimized for Next.js) for automatic deployments from Git
 
 ---
 
@@ -402,17 +402,19 @@ CREATE INDEX idx_actions_completed ON actions(is_completed, user_id);
 
 ### 11.1 Frontend Framework
 
-**React 18+ with Vite**
+**Next.js 14 with React 18+ and TypeScript**
 
-- **Rationale**: Industry standard, huge ecosystem, excellent TypeScript support, Vite for lightning-fast HMR
-- **TypeScript**: Strongly recommended for type safety and better developer experience
+- **Rationale**: Industry-leading React framework with built-in SSR, API routes, file-based routing, and excellent TypeScript support
+- **App Router**: Uses Next.js 14 App Router for modern React Server Components
+- **TypeScript**: Full TypeScript support for type safety and better developer experience
 - **Target Browsers**: Modern browsers (Chrome, Firefox, Safari, Edge) with ES2020+ support
 - **Mobile Responsive**: Fully responsive design works on mobile browsers (iOS Safari, Chrome Mobile)
+- **SEO Benefits**: Server-side rendering for better SEO and initial page load performance
 
 ### 11.2 Frontend Architecture
 
 - **State Management**: React useState/useContext (simple) or Zustand for global state
-- **Routing**: React Router v6 for client-side routing with protected routes
+- **Routing**: Next.js App Router with file-based routing and middleware for protected routes
 - **UI Components**: shadcn/ui (Radix UI primitives + Tailwind CSS) for accessible, customizable components
 - **Styling**: Tailwind CSS for utility-first styling with custom design system
 - **Forms**: React Hook Form with Zod validation
@@ -632,7 +634,7 @@ const { data, error } = await supabase
 
 ### Phase 1: Foundation & Setup (Week 1)
 
-- Project setup (React + Vite + TypeScript)
+- Project setup (Next.js 14 + TypeScript + App Router)
 - Tailwind CSS + shadcn/ui configuration
 - Supabase project creation and configuration
 - Database schema implementation (PostgreSQL tables)
@@ -985,10 +987,10 @@ If you later need Firebase features:
 **Status**: Product Specification - Web App with AI Integration
 
 **Major Changes from v1.3**:
-- Platform changed from mobile (React Native) to web (React + Vite)
+- Platform changed from mobile (React Native) to web (Next.js 14 with React 18+)
 - AI features (Gemini API) integrated from MVP instead of Phase 2
 - UI updated to modern gradient design based on Figma prototype
-- Tech stack updated: Tailwind CSS, shadcn/ui, framer-motion, Recharts
+- Tech stack updated: Next.js App Router, Tailwind CSS, shadcn/ui, framer-motion, Recharts
 - Development timeline reduced from 10 weeks to 8 weeks
-- Deployment changed from App Stores to web hosting (Vercel/Netlify)
+- Deployment changed from App Stores to Vercel (optimized for Next.js)
 - Notifications changed from FCM push to browser notifications + email
