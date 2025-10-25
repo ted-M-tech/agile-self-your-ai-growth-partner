@@ -3,11 +3,17 @@
 import { useState, useEffect } from 'react';
 import { LandingPage } from '@/components/LandingPage';
 import { Dashboard } from '@/components/Dashboard';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Home, Plus, ListTodo, History, Settings } from 'lucide-react';
 import type { Retrospective } from '@/lib/types';
 
-export default function Home() {
+type TabType = 'home' | 'new' | 'actions' | 'history' | 'settings';
+
+export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showApp, setShowApp] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('home');
   const [retrospectives, setRetrospectives] = useState<Retrospective[]>([]);
 
   // Load data from localStorage on mount ONLY
@@ -36,7 +42,7 @@ export default function Home() {
   };
 
   const handleNewRetrospective = () => {
-    // Will implement later
+    setActiveTab('new');
   };
 
   if (isLoading) {
@@ -46,6 +52,10 @@ export default function Home() {
   if (!showApp) {
     return <LandingPage onGetStarted={handleGetStarted} />;
   }
+
+  const pendingActions = retrospectives
+    .flatMap(r => r.actions)
+    .filter(a => !a.completed).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50">
@@ -63,10 +73,99 @@ export default function Home() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Dashboard
-          retrospectives={retrospectives}
-          onNewRetrospective={handleNewRetrospective}
-        />
+        {/* Navigation */}
+        <div className="mb-6">
+          <div className="inline-flex gap-2 p-1 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg">
+            <Button
+              variant={activeTab === 'home' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('home')}
+              className="gap-2"
+            >
+              <Home className="w-4 h-4" />
+              <span className="hidden sm:inline">Home</span>
+            </Button>
+            <Button
+              variant={activeTab === 'new' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('new')}
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">New</span>
+            </Button>
+            <Button
+              variant={activeTab === 'actions' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('actions')}
+              className="gap-2 relative"
+            >
+              <ListTodo className="w-4 h-4" />
+              <span className="hidden sm:inline">Actions</span>
+              {pendingActions > 0 && (
+                <Badge className="ml-1 h-5 min-w-5 px-1 text-xs bg-blue-600">
+                  {pendingActions}
+                </Badge>
+              )}
+            </Button>
+            <Button
+              variant={activeTab === 'history' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('history')}
+              className="gap-2"
+            >
+              <History className="w-4 h-4" />
+              <span className="hidden sm:inline">History</span>
+            </Button>
+            <Button
+              variant={activeTab === 'settings' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('settings')}
+              className="gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              <span className="hidden sm:inline">Settings</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div>
+          {activeTab === 'home' && (
+            <Dashboard
+              retrospectives={retrospectives}
+              onNewRetrospective={handleNewRetrospective}
+            />
+          )}
+
+          {activeTab === 'new' && (
+            <div className="text-center py-20">
+              <p className="text-slate-600 mb-4">KPTA Entry component will go here</p>
+              <p className="text-sm text-slate-500">Coming soon...</p>
+            </div>
+          )}
+
+          {activeTab === 'actions' && (
+            <div className="text-center py-20">
+              <p className="text-slate-600 mb-4">Actions List component will go here</p>
+              <p className="text-sm text-slate-500">Coming soon...</p>
+            </div>
+          )}
+
+          {activeTab === 'history' && (
+            <div className="text-center py-20">
+              <p className="text-slate-600 mb-4">Retrospective History component will go here</p>
+              <p className="text-sm text-slate-500">Coming soon...</p>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="text-center py-20">
+              <p className="text-slate-600 mb-4">Settings component will go here</p>
+              <p className="text-sm text-slate-500">Coming soon...</p>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
