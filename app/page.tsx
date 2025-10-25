@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { LandingPage } from '@/components/LandingPage';
 import { Dashboard } from '@/components/Dashboard';
 import { KPTAEntry } from '@/components/KPTAEntry';
+import { ActionsList } from '@/components/ActionsList';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Home, Plus, ListTodo, History, Settings } from 'lucide-react';
@@ -56,6 +57,11 @@ export default function HomePage() {
 
   const handleCancelEntry = () => {
     setActiveTab('home');
+  };
+
+  const handleUpdateRetrospectives = (updated: Retrospective[]) => {
+    setRetrospectives(updated);
+    localStorage.setItem('retrospectives', JSON.stringify(updated));
   };
 
   if (isLoading) {
@@ -160,10 +166,10 @@ export default function HomePage() {
           )}
 
           {activeTab === 'actions' && (
-            <div className="text-center py-20">
-              <p className="text-slate-600 mb-4">Actions List component will go here</p>
-              <p className="text-sm text-slate-500">Coming soon...</p>
-            </div>
+            <ActionsList
+              retrospectives={retrospectives}
+              onUpdateRetrospectives={handleUpdateRetrospectives}
+            />
           )}
 
           {activeTab === 'history' && (
