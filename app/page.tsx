@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { LandingPage } from '@/components/LandingPage';
 import { Dashboard } from '@/components/Dashboard';
+import { KPTAEntry } from '@/components/KPTAEntry';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Home, Plus, ListTodo, History, Settings } from 'lucide-react';
+import { Toaster } from 'sonner';
 import type { Retrospective } from '@/lib/types';
 
 type TabType = 'home' | 'new' | 'actions' | 'history' | 'settings';
@@ -45,6 +47,17 @@ export default function HomePage() {
     setActiveTab('new');
   };
 
+  const handleSaveRetrospective = (newRetro: Retrospective) => {
+    const updated = [newRetro, ...retrospectives];
+    setRetrospectives(updated);
+    localStorage.setItem('retrospectives', JSON.stringify(updated));
+    setActiveTab('home');
+  };
+
+  const handleCancelEntry = () => {
+    setActiveTab('home');
+  };
+
   if (isLoading) {
     return null;
   }
@@ -59,6 +72,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50">
+      <Toaster />
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -139,10 +153,10 @@ export default function HomePage() {
           )}
 
           {activeTab === 'new' && (
-            <div className="text-center py-20">
-              <p className="text-slate-600 mb-4">KPTA Entry component will go here</p>
-              <p className="text-sm text-slate-500">Coming soon...</p>
-            </div>
+            <KPTAEntry
+              onSave={handleSaveRetrospective}
+              onCancel={handleCancelEntry}
+            />
           )}
 
           {activeTab === 'actions' && (
