@@ -338,7 +338,7 @@ export function RetrospectiveHistory({ retrospectives, onUpdateRetrospectives }:
                 })}
               </div>
             )}
-          </CardContent>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -6,6 +6,7 @@ import { Dashboard } from '@/components/Dashboard';
 import { KPTAEntry } from '@/components/KPTAEntry';
 import { ActionsList } from '@/components/ActionsList';
 import { RetrospectiveHistory } from '@/components/RetrospectiveHistory';
+import { Settings as SettingsComponent } from '@/components/Settings';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Home, Plus, ListTodo, History, Settings } from 'lucide-react';
@@ -181,10 +182,10 @@ export default function HomePage() {
           )}
 
           {activeTab === 'settings' && (
-            <div className="text-center py-20">
-              <p className="text-slate-600 mb-4">Settings component will go here</p>
-              <p className="text-sm text-slate-500">Coming soon...</p>
-            </div>
+            <SettingsComponent
+              retrospectives={retrospectives}
+              onUpdateRetrospectives={handleUpdateRetrospectives}
+            />
           )}
         </div>
       </main>
