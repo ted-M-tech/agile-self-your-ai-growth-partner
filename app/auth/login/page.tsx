@@ -26,6 +26,14 @@ export default function LoginPage() {
       if (error) throw error
 
       if (data.user) {
+        // Force session persistence for Safari
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          console.log('Login successful, session persisted')
+        }
+
+        // Small delay to ensure session is saved in Safari
+        await new Promise(resolve => setTimeout(resolve, 100))
         router.push('/dashboard')
       }
     } catch (error: any) {

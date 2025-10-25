@@ -123,7 +123,7 @@ export default function DashboardPage() {
       {/* Welcome Header */}
       <div className="mb-10">
         <h1 className="text-ios-large-title text-ios-label-primary mb-2">
-          Welcome back
+          Dashboard
         </h1>
         <p className="text-ios-body text-ios-label-secondary">
           Ready to reflect and turn insights into action?

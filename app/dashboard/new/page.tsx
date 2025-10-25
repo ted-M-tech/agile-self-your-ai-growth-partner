@@ -767,20 +767,18 @@ export default function NewRetrospectivePage() {
         </div>
 
         {/* Auto-generated Title - Subtle */}
-        {title && (
-          <div className="p-4 bg-gradient-to-br from-ios-purple/5 to-ios-pink/5 rounded-2xl border border-ios-purple/10">
-            <div className="flex items-center space-x-2">
-              <Icon name="doc.text" size={18} className="text-ios-purple" />
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="flex-1 bg-transparent border-none focus:outline-none text-ios-headline font-semibold text-ios-label-primary placeholder:text-ios-label-tertiary"
-                placeholder="Edit title..."
-              />
-            </div>
+        <div className="p-4 bg-gradient-to-br from-ios-purple/5 to-ios-pink/5 rounded-2xl border border-ios-purple/10">
+          <div className="flex items-center space-x-2">
+            <Icon name="doc.text" size={18} className="text-ios-purple" />
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="flex-1 bg-transparent border-none focus:outline-none text-ios-headline font-semibold text-ios-label-primary placeholder:text-ios-label-tertiary"
+              placeholder="Enter title..."
+            />
           </div>
-        )}
+        </div>
       </div>
 
       {/* Progress Indicator - Minimal */}
