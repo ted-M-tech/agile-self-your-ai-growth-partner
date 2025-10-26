@@ -8,6 +8,7 @@ A modern web application for personal self-retrospection using the KPTA (Keep, P
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8)
+![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ecf8e)
 
 ## 🌟 Features
 
@@ -24,6 +25,12 @@ A modern web application for personal self-retrospection using the KPTA (Keep, P
 - **Achievement Recognition**: Celebrate your growth milestones
 - **Trend Visualization**: Interactive charts showing your progress
 
+### Authentication & Cloud Sync 🔐
+- **Google OAuth**: Secure one-click sign-in with Google account
+- **Cloud Sync**: Access your retrospectives from any device
+- **Row-Level Security**: Your data is isolated and protected
+- **Dual Mode**: Use with authentication (cloud) or locally (offline)
+
 ### Complete Feature Set
 - ✅ Interactive KPTA entry interface with weekly/monthly retrospectives
 - ✅ AI-powered wellbeing tracking and trend visualization
@@ -32,42 +39,72 @@ A modern web application for personal self-retrospection using the KPTA (Keep, P
 - ✅ Configurable reminders (weekly/monthly)
 - ✅ Data export to JSON
 - ✅ Responsive design with modern gradient UI
-- ✅ Local-first data storage (no account required)
+- ✅ Google Authentication with Supabase
+- ✅ Cloud data persistence with PostgreSQL
+- ✅ Optimistic UI updates with error handling
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 - Node.js 18+
 - npm or yarn
+- (Optional) Supabase account for cloud sync and authentication
 
-### Installation
+### Quick Start (Local Mode)
 
-1. Clone the repository:
+Run without authentication for local-only usage:
+
+1. Clone the repository
 ```bash
-cd /Users/tetsuya/Develop/agile-self-your-ai-growth-partner
+git clone <your-repo-url>
+cd agile-self-your-ai-growth-partner
 ```
 
-2. Install dependencies:
+2. Install dependencies
 ```bash
 npm install
 ```
 
-3. (Optional) Set up environment variables:
-```bash
-cp .env.example .env.local
-```
-
-For future Gemini API integration, add to `.env.local`:
-```
-GEMINI_API_KEY=your_api_key_here
-```
-
-4. Run the development server:
+3. Run the development server
 ```bash
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
+4. Open [http://localhost:3000](http://localhost:3000)
+
+Data will be stored in browser localStorage (no cloud sync).
+
+### Full Setup (With Supabase & Google Auth)
+
+For cloud sync and multi-device access:
+
+1. **Complete steps 1-2 from Quick Start above**
+
+2. **Set up Supabase** (detailed guide: [SUPABASE_SETUP.md](./SUPABASE_SETUP.md))
+   - Create Supabase project
+   - Configure Google OAuth in Google Cloud Console
+   - Run database schema from `supabase/schema.sql`
+   - Get API credentials
+
+3. **Configure environment variables**
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local`:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+4. **Run the development server**
+```bash
+npm run dev
+```
+
+5. **Sign in with Google** at [http://localhost:3000/login](http://localhost:3000/login)
+
+📚 **Full setup guide**: See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for step-by-step instructions with screenshots.
 
 ### Build for Production
 
@@ -81,30 +118,43 @@ npm start
 ```
 agile-self-your-ai-growth-partner/
 ├── app/                          # Next.js app directory
-│   ├── page.tsx                  # Main application entry point
-│   ├── layout.tsx                # Root layout with metadata
+│   ├── page.tsx                  # Main application (with auth integration)
+│   ├── layout.tsx                # Root layout with AuthProvider
 │   ├── globals.css               # Global styles with shadcn/ui colors
-│   └── api/                      # API routes (ready for Gemini integration)
-│       └── ai/                   # AI endpoint stubs
+│   ├── login/                    # Authentication pages
+│   │   └── page.tsx              # Google OAuth login page
+│   └── auth/callback/            # OAuth callback handler
+│       └── route.ts              # Supabase auth callback
 ├── components/                   # React components
 │   ├── LandingPage.tsx          # Landing page with gradient hero
 │   ├── Dashboard.tsx            # Main dashboard with AI insights
 │   ├── KPTAEntry.tsx            # New retrospective creation form
-│   ├── ActionsList.tsx          # Action items management
-│   ├── RetrospectiveHistory.tsx # Past retrospectives browser
+│   ├── ActionsList.tsx          # Action items (Supabase-enabled)
+│   ├── RetrospectiveHistory.tsx # Past retrospectives (Supabase-enabled)
 │   ├── Settings.tsx             # User preferences and data management
 │   └── ui/                      # shadcn/ui components
 │       ├── button.tsx
 │       ├── card.tsx
 │       ├── input.tsx
 │       ├── badge.tsx
-│       └── ... (more UI components)
+│       └── ... (17+ components)
 ├── lib/                         # Utilities and types
+│   ├── auth/                    # Authentication
+│   │   └── AuthContext.tsx      # Auth state management
+│   ├── supabase/                # Supabase integration
+│   │   ├── client.ts            # Browser client
+│   │   ├── server.ts            # Server client
+│   │   ├── types.ts             # Database types
+│   │   └── data-service.ts      # Data operations
 │   ├── types.ts                 # TypeScript type definitions
 │   └── utils.ts                 # Utility functions (cn helper)
+├── supabase/                    # Database schema
+│   └── schema.sql               # PostgreSQL schema with RLS
 ├── public/                      # Static assets
 ├── specification.md             # Product specification (v2.0)
 ├── CLAUDE.md                    # AI assistant development guidelines
+├── SUPABASE_SETUP.md            # Step-by-step Supabase setup guide
+├── .env.example                 # Environment variables template
 └── README.md                    # This file
 ```
 
@@ -120,14 +170,23 @@ agile-self-your-ai-growth-partner/
 - **Notifications**: [Sonner](https://sonner.emilkowal.ski/)
 - **Icons**: [Lucide React](https://lucide.dev/)
 
-### Backend (Planned)
-- **BaaS**: Supabase (PostgreSQL + Auth)
-- **AI**: Google Gemini API
-- **Storage**: PostgreSQL with Row-Level Security
+### Backend & Database
+- **BaaS**: [Supabase](https://supabase.com/) - PostgreSQL + Auth + Real-time
+- **Database**: PostgreSQL with Row-Level Security (RLS)
+- **Authentication**: Supabase Auth with Google OAuth 2.0
+- **Storage**: Cloud (Supabase) + Local fallback (localStorage)
+- **API Client**: `@supabase/supabase-js` + `@supabase/ssr`
 
-### Current Implementation
-- **Data Storage**: Browser localStorage (local-first)
-- **AI Features**: Client-side sentiment analysis and pattern detection
+### AI Features
+- **Current**: Client-side sentiment analysis and pattern detection
+- **Planned**: Google Gemini API integration for advanced insights
+
+### Data Architecture
+- **Dual Mode**:
+  - Authenticated: Cloud sync via Supabase PostgreSQL
+  - Local-only: Browser localStorage (no account required)
+- **Security**: Row-Level Security policies, JWT tokens, HTTPS only
+- **Sync Strategy**: Optimistic UI updates with error rollback
 
 ## 📱 Application Flow
 
@@ -193,6 +252,61 @@ agile-self-your-ai-growth-partner/
   - Export to JSON (includes all retrospectives, settings, metadata)
   - Clear all data with double confirmation
 - **About**: Version, framework, statistics
+
+## 🔑 Authentication Flow
+
+### Sign In with Google
+
+1. **Click "Get Started Free"** on landing page → Redirects to `/login`
+2. **Click "Continue with Google"** → OAuth flow begins
+3. **Authorize with Google** → Select Google account
+4. **Auto-redirect** → Returns to app via `/auth/callback`
+5. **Instant access** → Dashboard loads with synced data
+
+### User Experience
+
+**First Time User:**
+```
+Landing Page → Login → Google OAuth → Dashboard (empty state)
+                                    → Create first retrospective
+                                    → Data saves to Supabase automatically
+```
+
+**Returning User:**
+```
+Landing Page → Auto-detected session → Dashboard (with data)
+                                     → All retrospectives loaded from Supabase
+```
+
+**Sign Out:**
+```
+Header → Sign Out button → Confirmation toast
+                        → Data remains in Supabase (safe)
+                        → Redirected to landing page
+```
+
+### Session Management
+- **Auto-refresh**: Sessions automatically refresh, no re-login needed
+- **Persistent**: Stay signed in across browser sessions
+- **Secure**: JWT tokens stored securely in httpOnly cookies
+- **User Info**: Avatar and name displayed in header
+- **Multi-tab**: Works seamlessly across browser tabs
+
+### Data Sync Behavior
+
+**When Authenticated:**
+- ✅ All CRUD operations sync to Supabase instantly
+- ✅ Optimistic UI updates (instant feedback)
+- ✅ Error handling with rollback on failure
+- ✅ Data persists across devices
+- ✅ Automatic conflict resolution
+
+**When Local-Only:**
+- ✅ All data stays in browser localStorage
+- ✅ No network requests
+- ✅ Works offline
+- ✅ Can export to JSON
+- ⚠️ Data limited to current browser
 
 ## 🎯 KPTA Framework Guide
 
@@ -285,36 +399,53 @@ If you complete 4+ retrospectives with ~weekly intervals, AI recognizes:
 
 ## 🔐 Data & Privacy
 
-### Current (MVP)
-- **Local-First**: All data stored in browser localStorage
-- **No Account**: Use immediately, no signup required
-- **Export Anytime**: Download complete data as JSON
-- **Privacy**: Data never leaves your device
+### Dual-Mode Architecture
 
-### Future (Phase 2 - Supabase)
-- **Optional Sync**: Cloud backup for multi-device access
-- **Row-Level Security**: PostgreSQL RLS ensures data isolation
-- **Open Source Backend**: Supabase is open-source, self-hostable
-- **Encryption**: Data encrypted in transit and at rest
+**Authenticated Mode** (with Supabase):
+- **Google OAuth**: Secure sign-in with Google account
+- **Cloud Sync**: Data stored in PostgreSQL, accessible from any device
+- **Row-Level Security**: RLS policies ensure you can only access your own data
+- **Encryption**: Data encrypted in transit (HTTPS) and at rest
+- **Multi-Device**: Access your retrospectives from phone, tablet, desktop
+- **Automatic Backups**: Supabase handles database backups
+
+**Local-Only Mode** (without authentication):
+- **No Account Required**: Use immediately, no signup
+- **Browser Storage**: All data stored in localStorage
+- **Privacy**: Data never leaves your device
+- **Export Anytime**: Download complete data as JSON
+- **Single Device**: Data only available on current browser
+
+### Security Features
+- ✅ **JWT Authentication**: Secure token-based sessions
+- ✅ **OAuth 2.0**: Industry-standard Google sign-in
+- ✅ **HTTPS Only**: All connections encrypted
+- ✅ **No Password Storage**: Google handles credentials
+- ✅ **RLS Policies**: Database-level data isolation
+- ✅ **Session Auto-Refresh**: Seamless authentication experience
+- ✅ **Open Source Backend**: Supabase is fully open-source, self-hostable
 
 ## 🗺️ Development Roadmap
 
-### ✅ v2.0 MVP (Current)
+### ✅ v2.0 MVP (Current - Complete!)
 - [x] Core KPTA functionality
-- [x] AI insights (client-side)
-- [x] Local data storage
+- [x] AI insights (client-side pattern detection)
+- [x] Local data storage (localStorage)
 - [x] Complete UI implementation
 - [x] Action items with deadlines
 - [x] Search and filtering
-- [x] Data export
+- [x] Data export to JSON
+- [x] **Supabase authentication (Google OAuth)**
+- [x] **PostgreSQL database with RLS**
+- [x] **Cloud data sync across devices**
+- [x] **Dual-mode support (authenticated + local-only)**
 
-### 🔜 Phase 2: Backend Integration
-- [ ] Supabase authentication
-- [ ] PostgreSQL database with RLS
-- [ ] Cloud data sync across devices
-- [ ] Gemini API integration for advanced AI
-- [ ] Push notifications for reminders
-- [ ] Social auth (Google, Apple)
+### 🔜 Phase 2: Enhanced Features
+- [ ] Additional OAuth providers (Apple, GitHub, email/password)
+- [ ] Real-time sync using Supabase Realtime
+- [ ] Gemini API integration for advanced AI insights
+- [ ] Push notifications for reminders (Supabase Edge Functions)
+- [ ] Data migration tool (localStorage → Supabase)
 
 ### 🚀 Phase 3: Premium Features
 - [ ] Advanced AI analysis (topic modeling, semantic search)
