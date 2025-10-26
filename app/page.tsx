@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { LandingPage } from '@/components/LandingPage';
 import { Dashboard } from '@/components/Dashboard';
 import { KPTAEntry } from '@/components/KPTAEntry';
@@ -9,39 +10,69 @@ import { RetrospectiveHistory } from '@/components/RetrospectiveHistory';
 import { Settings as SettingsComponent } from '@/components/Settings';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Home, Plus, ListTodo, History, Settings } from 'lucide-react';
-import { Toaster } from 'sonner';
+import { Home, Plus, ListTodo, History, Settings, LogOut } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { dataService } from '@/lib/supabase/data-service';
 import type { Retrospective } from '@/lib/types';
 
 type TabType = 'home' | 'new' | 'actions' | 'history' | 'settings';
 
 export default function HomePage() {
+  const { user, loading: authLoading, signOut } = useAuth();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [showApp, setShowApp] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [retrospectives, setRetrospectives] = useState<Retrospective[]>([]);
 
-  // Load data from localStorage on mount ONLY
+  // Load data based on authentication status
   useEffect(() => {
-    const hasStarted = localStorage.getItem('hasStarted');
-    const stored = localStorage.getItem('retrospectives');
+    async function loadData() {
+      if (authLoading) return;
 
-    if (hasStarted === 'true') {
-      setShowApp(true);
-    }
-
-    if (stored) {
-      try {
-        setRetrospectives(JSON.parse(stored));
-      } catch (e) {
-        console.error('Error parsing stored retrospectives:', e);
+      // If user is authenticated, load from Supabase
+      if (user) {
+        try {
+          const data = await dataService.fetchRetrospectives(user.id);
+          setRetrospectives(data);
+          setShowApp(true);
+        } catch (error) {
+          console.error('Error loading retrospectives:', error);
+          toast.error('Failed to load retrospectives');
+        }
+        setIsLoading(false);
+        return;
       }
+
+      // If not authenticated, check localStorage for local-only mode
+      const hasStarted = localStorage.getItem('hasStarted');
+      const stored = localStorage.getItem('retrospectives');
+
+      if (hasStarted === 'true') {
+        setShowApp(true);
+      }
+
+      if (stored) {
+        try {
+          setRetrospectives(JSON.parse(stored));
+        } catch (e) {
+          console.error('Error parsing stored retrospectives:', e);
+        }
+      }
+
+      setIsLoading(false);
     }
 
-    setIsLoading(false);
-  }, []);
+    loadData();
+  }, [user, authLoading]);
 
   const handleGetStarted = () => {
+    // If not authenticated, ask user to sign in or continue offline
+    if (!user) {
+      router.push('/login');
+      return;
+    }
     localStorage.setItem('hasStarted', 'true');
     setShowApp(true);
   };
@@ -50,10 +81,24 @@ export default function HomePage() {
     setActiveTab('new');
   };
 
-  const handleSaveRetrospective = (newRetro: Retrospective) => {
+  const handleSaveRetrospective = async (newRetro: Retrospective) => {
     const updated = [newRetro, ...retrospectives];
     setRetrospectives(updated);
-    localStorage.setItem('retrospectives', JSON.stringify(updated));
+
+    // Sync to Supabase if authenticated
+    if (user) {
+      try {
+        await dataService.saveRetrospective(user.id, newRetro);
+        toast.success('Retrospective saved!');
+      } catch (error) {
+        console.error('Error saving retrospective:', error);
+        toast.error('Failed to save retrospective');
+      }
+    } else {
+      // Save to localStorage for offline mode
+      localStorage.setItem('retrospectives', JSON.stringify(updated));
+    }
+
     setActiveTab('home');
   };
 
@@ -61,9 +106,38 @@ export default function HomePage() {
     setActiveTab('home');
   };
 
-  const handleUpdateRetrospectives = (updated: Retrospective[]) => {
+  const handleUpdateRetrospectives = async (updated: Retrospective[]) => {
     setRetrospectives(updated);
-    localStorage.setItem('retrospectives', JSON.stringify(updated));
+
+    // Sync to Supabase if authenticated
+    if (user) {
+      // This is called when actions are updated or retrospectives deleted
+      // We need to reload from Supabase to ensure consistency
+      try {
+        const fresh = await dataService.fetchRetrospectives(user.id);
+        setRetrospectives(fresh);
+      } catch (error) {
+        console.error('Error reloading retrospectives:', error);
+        toast.error('Failed to sync changes');
+      }
+    } else {
+      localStorage.setItem('retrospectives', JSON.stringify(updated));
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setRetrospectives([]);
+      setShowApp(false);
+      localStorage.removeItem('hasStarted');
+      localStorage.removeItem('retrospectives');
+      router.push('/');
+      toast.success('Signed out successfully');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('Failed to sign out');
+    }
   };
 
   if (isLoading) {
@@ -87,9 +161,36 @@ export default function HomePage() {
             <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Agile Self
             </h1>
-            <p className="text-sm text-slate-600 hidden sm:block">
-              Turn Reflection Into Action
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-slate-600 hidden sm:block">
+                Turn Reflection Into Action
+              </p>
+              {user && (
+                <div className="flex items-center gap-3">
+                  <div className="hidden md:flex items-center gap-2">
+                    {user.user_metadata?.avatar_url && (
+                      <img
+                        src={user.user_metadata.avatar_url}
+                        alt="User avatar"
+                        className="w-8 h-8 rounded-full"
+                      />
+                    )}
+                    <span className="text-sm text-slate-700">
+                      {user.user_metadata?.full_name || user.email}
+                    </span>
+                  </div>
+                  <Button
+                    onClick={handleSignOut}
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign Out</span>
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>

@@ -9,6 +9,8 @@ import { Progress } from './ui/progress';
 import { Trash2, Search, ChevronDown, ChevronUp, Calendar, CheckCircle } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { dataService } from '@/lib/supabase/data-service';
 import type { Retrospective } from '@/lib/types';
 
 interface RetrospectiveHistoryProps {
@@ -43,6 +45,7 @@ function calculateWellbeingScore(retrospective: Retrospective): number {
 }
 
 export function RetrospectiveHistory({ retrospectives, onUpdateRetrospectives }: RetrospectiveHistoryProps) {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -76,10 +79,27 @@ export function RetrospectiveHistory({ retrospectives, onUpdateRetrospectives }:
     setExpandedIds(newExpanded);
   };
 
-  const handleDeleteRetrospective = (id: string) => {
+  const handleDeleteRetrospective = async (id: string) => {
+    // Optimistic update
     const updated = retrospectives.filter(r => r.id !== id);
+
+    // Sync to Supabase if authenticated
+    if (user) {
+      try {
+        await dataService.deleteRetrospective(id);
+        toast.success('Retrospective deleted');
+      } catch (error) {
+        console.error('Error deleting retrospective:', error);
+        toast.error('Failed to delete retrospective');
+        // Revert on error
+        onUpdateRetrospectives(retrospectives);
+        return;
+      }
+    } else {
+      toast.success('Retrospective deleted');
+    }
+
     onUpdateRetrospectives(updated);
-    toast.success('Retrospective deleted');
   };
 
   const weeklyCount = retrospectives.filter(r => r.type === 'weekly').length;

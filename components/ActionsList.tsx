@@ -8,6 +8,8 @@ import { Badge } from './ui/badge';
 import { Trash2, Calendar, ExternalLink } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { dataService } from '@/lib/supabase/data-service';
 import type { Retrospective, Action } from '@/lib/types';
 
 interface ActionsListProps {
@@ -18,6 +20,7 @@ interface ActionsListProps {
 type FilterType = 'all' | 'pending' | 'completed';
 
 export function ActionsList({ retrospectives, onUpdateRetrospectives }: ActionsListProps) {
+  const { user } = useAuth();
   const [filter, setFilter] = useState<FilterType>('all');
 
   // Flatten all actions from all retrospectives
@@ -36,32 +39,62 @@ export function ActionsList({ retrospectives, onUpdateRetrospectives }: ActionsL
     return true;
   });
 
-  const handleToggleComplete = (actionId: string) => {
+  const handleToggleComplete = async (actionId: string) => {
+    const action = allActions.find(a => a.id === actionId);
+    if (!action) return;
+
+    // Optimistic update
     const updated = retrospectives.map(retro => ({
       ...retro,
-      actions: retro.actions.map(action =>
-        action.id === actionId
-          ? { ...action, completed: !action.completed }
-          : action
+      actions: retro.actions.map(a =>
+        a.id === actionId
+          ? { ...a, completed: !a.completed }
+          : a
       ),
     }));
+    setFilter(filter); // Trigger re-render
+
+    // Sync to Supabase if authenticated
+    if (user) {
+      try {
+        await dataService.updateAction(actionId, { completed: !action.completed });
+        toast.success(action.completed ? 'Action marked as pending' : 'Action completed! 🎉');
+      } catch (error) {
+        console.error('Error updating action:', error);
+        toast.error('Failed to update action');
+        // Revert on error
+        onUpdateRetrospectives(retrospectives);
+        return;
+      }
+    }
 
     onUpdateRetrospectives(updated);
-
-    const action = allActions.find(a => a.id === actionId);
-    if (action) {
-      toast.success(action.completed ? 'Action marked as pending' : 'Action completed! 🎉');
-    }
   };
 
-  const handleDeleteAction = (actionId: string) => {
+  const handleDeleteAction = async (actionId: string) => {
+    // Optimistic update
     const updated = retrospectives.map(retro => ({
       ...retro,
       actions: retro.actions.filter(action => action.id !== actionId),
     }));
 
+    // Sync to Supabase if authenticated
+    if (user) {
+      try {
+        await dataService.deleteAction(actionId);
+        toast.success('Action deleted');
+      } catch (error) {
+        console.error('Error deleting action:', error);
+        toast.error('Failed to delete action');
+        // Revert on error
+        onUpdateRetrospectives(retrospectives);
+        return;
+      }
+    } else {
+      toast.success('Action deleted');
+    }
+
     onUpdateRetrospectives(updated);
-    toast.success('Action deleted');
   };
 
   const pendingCount = allActions.filter(a => !a.completed).length;
