@@ -17,7 +17,7 @@ export interface Database {
           type: 'weekly' | 'monthly'
           start_date: string
           end_date: string
-          date: string
+          retro_date: string
           keeps: string[]
           problems: string[]
           tries: string[]
@@ -31,7 +31,7 @@ export interface Database {
           type: 'weekly' | 'monthly'
           start_date: string
           end_date: string
-          date: string
+          retro_date: string
           keeps?: string[]
           problems?: string[]
           tries?: string[]
@@ -45,7 +45,7 @@ export interface Database {
           type?: 'weekly' | 'monthly'
           start_date?: string
           end_date?: string
-          date?: string
+          retro_date?: string
           keeps?: string[]
           problems?: string[]
           tries?: string[]

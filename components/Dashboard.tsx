@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { Brain, TrendingUp, Lightbulb, AlertCircle, Sparkles, Plus, Calendar } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Brain, TrendingUp, Lightbulb, AlertCircle, Sparkles, Plus, Calendar, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import type { Retrospective } from '@/lib/types';
 
 interface DashboardProps {
@@ -25,8 +26,7 @@ interface AIInsight {
   type: 'pattern' | 'suggestion' | 'achievement' | 'warning';
   title: string;
   description: string;
-  icon: typeof Brain;
-  color: string;
+  category?: 'strength' | 'growth';
 }
 
 // Calculate wellbeing score based on sentiment analysis
@@ -56,100 +56,30 @@ function calculateWellbeingScore(retrospective: Retrospective): number {
   return Math.min(Math.round(score), 100);
 }
 
-// Generate AI insights based on retrospectives
-function generateAIInsights(retrospectives: Retrospective[]): AIInsight[] {
-  if (retrospectives.length === 0) return [];
+// Get icon and color based on insight type and category
+function getInsightStyle(insight: AIInsight) {
+  const typeMap = {
+    pattern: { icon: AlertCircle, color: 'text-amber-600' },
+    suggestion: { icon: Lightbulb, color: 'text-blue-600' },
+    achievement: { icon: Sparkles, color: 'text-green-600' },
+    warning: { icon: AlertCircle, color: 'text-red-600' },
+  };
 
-  const insights: AIInsight[] = [];
-  const recentRetros = retrospectives.slice(0, 5);
-
-  // Pattern detection
-  const allProblems = recentRetros.flatMap(r => r.problems);
-  const problemWords = allProblems.join(' ').toLowerCase();
-
-  if (problemWords.includes('sleep') || problemWords.includes('tired')) {
-    insights.push({
-      type: 'pattern',
-      title: 'Recurring Sleep Pattern',
-      description: 'Sleep issues appear frequently in your retrospectives. Consider creating an action to establish a consistent bedtime routine.',
-      icon: AlertCircle,
-      color: 'text-amber-600',
-    });
+  // Override color based on category
+  if (insight.category === 'strength') {
+    return { icon: typeMap[insight.type].icon, color: 'text-green-600' };
+  } else if (insight.category === 'growth') {
+    return { icon: typeMap[insight.type].icon, color: 'text-amber-600' };
   }
 
-  if (problemWords.includes('procrastinat') || problemWords.includes('delay')) {
-    insights.push({
-      type: 'suggestion',
-      title: 'Procrastination Detected',
-      description: 'Try the "2-Minute Rule": if a task takes less than 2 minutes, do it immediately. For larger tasks, commit to just 5 minutes to build momentum.',
-      icon: Lightbulb,
-      color: 'text-blue-600',
-    });
-  }
-
-  // Achievement detection
-  const recentScore = calculateWellbeingScore(retrospectives[0]);
-  const olderScore = retrospectives.length > 3 ? calculateWellbeingScore(retrospectives[3]) : 0;
-
-  if (recentScore > olderScore + 10) {
-    insights.push({
-      type: 'achievement',
-      title: 'Wellbeing Trending Up! 🎉',
-      description: `Your wellbeing score has improved by ${Math.round(recentScore - olderScore)} points. Keep up the great work!`,
-      icon: TrendingUp,
-      color: 'text-green-600',
-    });
-  }
-
-  // Action completion analysis
-  const completedActions = retrospectives.flatMap(r => r.actions).filter(a => a.completed).length;
-  const totalActions = retrospectives.flatMap(r => r.actions).length;
-  const completionRate = totalActions > 0 ? (completedActions / totalActions) * 100 : 0;
-
-  if (completionRate > 70) {
-    insights.push({
-      type: 'achievement',
-      title: 'Action Champion',
-      description: `You've completed ${Math.round(completionRate)}% of your action items. Your commitment to growth is inspiring!`,
-      icon: Sparkles,
-      color: 'text-purple-600',
-    });
-  } else if (completionRate < 30 && totalActions > 5) {
-    insights.push({
-      type: 'warning',
-      title: 'Action Items Need Attention',
-      description: 'Many action items remain incomplete. Try breaking them into smaller, more manageable steps.',
-      icon: AlertCircle,
-      color: 'text-red-600',
-    });
-  }
-
-  // Consistency check
-  if (retrospectives.length >= 4) {
-    const dates = retrospectives.slice(0, 4).map(r => new Date(r.date).getTime());
-    const intervals = [];
-    for (let i = 0; i < dates.length - 1; i++) {
-      intervals.push(dates[i] - dates[i + 1]);
-    }
-    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-    const daysInterval = avgInterval / (1000 * 60 * 60 * 24);
-
-    if (daysInterval >= 5 && daysInterval <= 9) {
-      insights.push({
-        type: 'achievement',
-        title: 'Consistent Reflection Habit',
-        description: 'You\'re maintaining a regular weekly reflection practice. Consistency is key to personal growth!',
-        icon: Brain,
-        color: 'text-indigo-600',
-      });
-    }
-  }
-
-  return insights;
+  return typeMap[insight.type];
 }
 
 export function Dashboard({ retrospectives, onNewRetrospective }: DashboardProps) {
   const [timeRange, setTimeRange] = useState<'30d' | '90d' | 'all'>('30d');
+  const [insights, setInsights] = useState<AIInsight[]>([]);
+  const [loadingInsights, setLoadingInsights] = useState(false);
+  const insightsFetchedRef = useRef(false);
 
   // Calculate wellbeing trend
   const wellbeingData: WellbeingData[] = retrospectives
@@ -166,8 +96,41 @@ export function Dashboard({ retrospectives, onNewRetrospective }: DashboardProps
     ? Math.round(wellbeingData.reduce((sum, d) => sum + d.score, 0) / wellbeingData.length)
     : 0;
 
-  const insights = generateAIInsights(retrospectives);
   const recentRetros = retrospectives.slice(0, 3);
+
+  // Fetch AI insights when retrospectives change
+  useEffect(() => {
+    async function fetchInsights() {
+      // Only fetch if we have at least 1 retrospective and haven't fetched yet
+      if (retrospectives.length === 0 || insightsFetchedRef.current) return;
+
+      setLoadingInsights(true);
+      insightsFetchedRef.current = true;
+
+      try {
+        const response = await fetch('/api/ai/insights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ retrospectives }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch insights');
+        }
+
+        const data = await response.json();
+        setInsights(data.insights);
+      } catch (error) {
+        console.error('Error fetching AI insights:', error);
+        toast.error('Unable to load AI insights at this time');
+        setInsights([]);
+      } finally {
+        setLoadingInsights(false);
+      }
+    }
+
+    fetchInsights();
+  }, [retrospectives.length]); // Re-fetch when retrospectives count changes
 
   // Stats
   const totalRetrospectives = retrospectives.length;
@@ -317,42 +280,59 @@ export function Dashboard({ retrospectives, onNewRetrospective }: DashboardProps
       </Card>
 
       {/* AI Insights */}
-      {insights.length > 0 && (
+      {(insights.length > 0 || loadingInsights) && (
         <Card className="bg-white/60 backdrop-blur-sm border-slate-200">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-blue-600" />
+              <Sparkles className="w-5 h-5 text-purple-600" />
               AI Insights
+              {loadingInsights && <Loader2 className="w-4 h-4 animate-spin text-blue-600" />}
             </CardTitle>
-            <CardDescription>Personalized insights from your retrospectives</CardDescription>
+            <CardDescription>Powered by Gemini AI - Personalized insights from your retrospectives</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {insights.map((insight, index) => {
-              const Icon = insight.icon;
-              return (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="flex gap-4 p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-blue-300 transition-all"
-                >
-                  <div className={`${insight.color} mt-1`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className={`${insight.color} font-semibold mb-1`}>{insight.title}</h4>
-                    <p className="text-sm text-slate-600">{insight.description}</p>
-                  </div>
-                  <Badge
-                    variant="secondary"
-                    className="h-fit capitalize"
+            {loadingInsights ? (
+              <div className="text-center py-8 text-slate-500">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-blue-600" />
+                <p>Analyzing your retrospectives with AI...</p>
+              </div>
+            ) : (
+              insights.map((insight, index) => {
+                const { icon: Icon, color } = getInsightStyle(insight);
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                    className="flex gap-4 p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-blue-300 transition-all"
                   >
-                    {insight.type}
-                  </Badge>
-                </motion.div>
-              );
-            })}
+                    <div className={`${color} mt-1`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className={`${color} font-semibold mb-1`}>{insight.title}</h4>
+                      <p className="text-sm text-slate-600">{insight.description}</p>
+                    </div>
+                    <div className="flex flex-col gap-1 items-end">
+                      <Badge variant="secondary" className="h-fit capitalize">
+                        {insight.type}
+                      </Badge>
+                      {insight.category && (
+                        <Badge
+                          variant="outline"
+                          className={`h-fit text-xs ${
+                            insight.category === 'strength' ? 'border-green-300 text-green-700' : 'border-amber-300 text-amber-700'
+                          }`}
+                        >
+                          {insight.category}
+                        </Badge>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
           </CardContent>
         </Card>
       )}

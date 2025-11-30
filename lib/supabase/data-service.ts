@@ -13,7 +13,7 @@ function dbToRetrospective(dbRetro: DbRetrospective, actions: DbAction[]): Retro
     type: dbRetro.type,
     startDate: dbRetro.start_date,
     endDate: dbRetro.end_date,
-    date: dbRetro.date,
+    date: dbRetro.retro_date,
     keeps: dbRetro.keeps,
     problems: dbRetro.problems,
     tries: dbRetro.tries,
@@ -43,7 +43,7 @@ export class DataService {
       .from('retrospectives')
       .select('*')
       .eq('user_id', userId)
-      .order('date', { ascending: false });
+      .order('retro_date', { ascending: false });
 
     if (retroError) throw retroError;
     if (!retros) return [];
@@ -83,7 +83,7 @@ export class DataService {
         type: retrospective.type,
         start_date: retrospective.startDate,
         end_date: retrospective.endDate,
-        date: retrospective.date,
+        retro_date: retrospective.date,
         keeps: retrospective.keeps,
         problems: retrospective.problems,
         tries: retrospective.tries,

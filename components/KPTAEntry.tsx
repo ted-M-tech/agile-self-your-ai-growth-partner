@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Trash2, Calendar as CalendarIcon, Save, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Trash2, Calendar as CalendarIcon, Save, CheckCircle2, Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -10,6 +10,7 @@ import { Label } from './ui/label';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Checkbox } from './ui/checkbox';
 import { toast } from 'sonner';
+import { ActionItemsSheet } from './ActionItemsSheet';
 import type { Retrospective } from '@/lib/types';
 
 interface KPTAEntryProps {
@@ -63,6 +64,31 @@ export function KPTAEntry({ onSave, onCancel }: KPTAEntryProps) {
   const [keeps, setKeeps] = useState<string[]>(['']);
   const [problems, setProblems] = useState<string[]>(['']);
   const [tryItems, setTryItems] = useState<TryItemWithAction[]>([{ text: '', createAction: false }]);
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [loadingAISuggestions, setLoadingAISuggestions] = useState(false);
+
+  // Detect if mobile on mount
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Auto-update title when dates or type change (unless user has edited it)
+  useEffect(() => {
+    if (!isEditingTitle && startDate && endDate) {
+      const newTitle = generateTitle(
+        type,
+        new Date(startDate),
+        new Date(endDate)
+      );
+      setTitle(newTitle);
+    }
+  }, [startDate, endDate, type, isEditingTitle]);
 
   const updateItem = (list: string[], setList: (items: string[]) => void, index: number, value: string) => {
     const newList = [...list];
@@ -111,13 +137,27 @@ export function KPTAEntry({ onSave, onCancel }: KPTAEntryProps) {
       return;
     }
 
-    const retrospectiveId = `retro-${Date.now()}`;
+    // If there are Try items and we're on mobile, show the action sheet
+    if (filledTryItems.length > 0 && isMobile) {
+      setShowActionSheet(true);
+      return;
+    }
+
+    // Otherwise save directly (desktop flow or no Try items)
+    saveRetrospective(tryItems.filter(t => t.text.trim()));
+  };
+
+  const saveRetrospective = (finalTryItems: TryItemWithAction[]) => {
+    const filledKeeps = keeps.filter(k => k.trim());
+    const filledProblems = problems.filter(p => p.trim());
+
+    const retrospectiveId = crypto.randomUUID();
 
     // Create actions from Try items that are marked for action
-    const actions = filledTryItems
+    const actions = finalTryItems
       .filter(tryItem => tryItem.createAction)
-      .map((tryItem, index) => ({
-        id: `action-${Date.now()}-${index}`,
+      .map((tryItem) => ({
+        id: crypto.randomUUID(),
         text: tryItem.text,
         completed: false,
         retrospectiveId,
@@ -135,12 +175,64 @@ export function KPTAEntry({ onSave, onCancel }: KPTAEntryProps) {
       date: endDate,
       keeps: filledKeeps,
       problems: filledProblems,
-      tries: filledTryItems.map(t => t.text),
+      tries: finalTryItems.map(t => t.text),
       actions,
     };
 
     onSave(retrospective);
     toast.success('Retrospective saved successfully!');
+  };
+
+  const handleActionSheetConfirm = (confirmedItems: TryItemWithAction[]) => {
+    saveRetrospective(confirmedItems);
+  };
+
+  const handleGetAISuggestions = async () => {
+    const filledKeeps = keeps.filter(k => k.trim());
+    const filledProblems = problems.filter(p => p.trim());
+
+    if (filledProblems.length === 0) {
+      toast.error('Add at least one Problem to get AI suggestions');
+      return;
+    }
+
+    setLoadingAISuggestions(true);
+
+    try {
+      const response = await fetch('/api/ai/suggest-tries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          problems: filledProblems,
+          keeps: filledKeeps,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get suggestions');
+      }
+
+      const data = await response.json();
+      const suggestions = data.suggestions;
+
+      if (suggestions && suggestions.length > 0) {
+        // Replace empty try items or add new ones with AI suggestions
+        const newTryItems = suggestions.map((sug: any) => ({
+          text: sug.text,
+          createAction: false,
+        }));
+
+        setTryItems(newTryItems);
+        toast.success(`Generated ${suggestions.length} AI-powered Try suggestions!`);
+      } else {
+        toast.error('No suggestions generated. Try adding more details to your Problems.');
+      }
+    } catch (error) {
+      console.error('Error getting AI suggestions:', error);
+      toast.error('Failed to get AI suggestions. Please try again.');
+    } finally {
+      setLoadingAISuggestions(false);
+    }
   };
 
   return (
@@ -330,10 +422,36 @@ export function KPTAEntry({ onSave, onCancel }: KPTAEntryProps) {
       {/* Try Items with Action Creation */}
       <Card className="bg-purple-50/60 backdrop-blur-sm border-purple-200">
         <CardHeader>
-          <CardTitle className="text-purple-900">Try & Actions</CardTitle>
-          <CardDescription className="text-purple-700">
-            Add experiments to try. Check the box to create action items with deadlines.
-          </CardDescription>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardTitle className="text-purple-900 mb-2">Try</CardTitle>
+              <CardDescription className="text-purple-700">
+                {isMobile
+                  ? "Add experiments to try. You'll be able to turn them into action items next."
+                  : "Add experiments to try. Check the box to create action items with deadlines."
+                }
+              </CardDescription>
+            </div>
+            <Button
+              onClick={handleGetAISuggestions}
+              disabled={loadingAISuggestions || problems.filter(p => p.trim()).length === 0}
+              variant="outline"
+              size="sm"
+              className="border-purple-300 text-purple-700 hover:bg-purple-100 whitespace-nowrap"
+            >
+              {loadingAISuggestions ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  AI Suggestions
+                </>
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {tryItems.map((tryItem, index) => (
@@ -358,7 +476,8 @@ export function KPTAEntry({ onSave, onCancel }: KPTAEntryProps) {
                 )}
               </div>
 
-              {tryItem.text.trim() && (
+              {/* Desktop: Show inline checkbox and deadline */}
+              {!isMobile && tryItem.text.trim() && (
                 <div className="flex items-center gap-4 pl-2">
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -414,6 +533,14 @@ export function KPTAEntry({ onSave, onCancel }: KPTAEntryProps) {
           Save Retrospective
         </Button>
       </div>
+
+      {/* Mobile: Action Items Sheet */}
+      <ActionItemsSheet
+        open={showActionSheet}
+        onOpenChange={setShowActionSheet}
+        tryItems={tryItems.filter(t => t.text.trim())}
+        onConfirm={handleActionSheetConfirm}
+      />
     </div>
   );
 }

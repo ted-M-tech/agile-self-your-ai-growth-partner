@@ -1,15 +1,20 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Drop existing tables if they exist (clean slate)
+DROP TABLE IF EXISTS actions CASCADE;
+DROP TABLE IF EXISTS retrospectives CASCADE;
+DROP TABLE IF EXISTS user_preferences CASCADE;
+
 -- Create retrospectives table
-CREATE TABLE IF NOT EXISTS retrospectives (
+CREATE TABLE retrospectives (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('weekly', 'monthly')),
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
-  date DATE NOT NULL,
+  retro_date DATE NOT NULL,  -- Changed from 'date' to avoid reserved keyword
   keeps TEXT[] DEFAULT '{}',
   problems TEXT[] DEFAULT '{}',
   tries TEXT[] DEFAULT '{}',
@@ -18,7 +23,7 @@ CREATE TABLE IF NOT EXISTS retrospectives (
 );
 
 -- Create actions table
-CREATE TABLE IF NOT EXISTS actions (
+CREATE TABLE actions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   retrospective_id UUID REFERENCES retrospectives(id) ON DELETE CASCADE NOT NULL,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -31,7 +36,7 @@ CREATE TABLE IF NOT EXISTS actions (
 );
 
 -- Create user_preferences table
-CREATE TABLE IF NOT EXISTS user_preferences (
+CREATE TABLE user_preferences (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
   reminder_enabled BOOLEAN DEFAULT FALSE,
@@ -44,12 +49,12 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 );
 
 -- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_retrospectives_user_id ON retrospectives(user_id);
-CREATE INDEX IF NOT EXISTS idx_retrospectives_date ON retrospectives(date DESC);
-CREATE INDEX IF NOT EXISTS idx_actions_user_id ON actions(user_id);
-CREATE INDEX IF NOT EXISTS idx_actions_retrospective_id ON actions(retrospective_id);
-CREATE INDEX IF NOT EXISTS idx_actions_completed ON actions(completed);
-CREATE INDEX IF NOT EXISTS idx_user_preferences_user_id ON user_preferences(user_id);
+CREATE INDEX idx_retrospectives_user_id ON retrospectives(user_id);
+CREATE INDEX idx_retrospectives_date ON retrospectives(retro_date DESC);
+CREATE INDEX idx_actions_user_id ON actions(user_id);
+CREATE INDEX idx_actions_retrospective_id ON actions(retrospective_id);
+CREATE INDEX idx_actions_completed ON actions(completed);
+CREATE INDEX idx_user_preferences_user_id ON user_preferences(user_id);
 
 -- Enable Row Level Security
 ALTER TABLE retrospectives ENABLE ROW LEVEL SECURITY;
