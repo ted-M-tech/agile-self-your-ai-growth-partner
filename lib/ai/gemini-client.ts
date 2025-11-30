@@ -14,9 +14,9 @@ try {
   if (apiKey) {
     genAI = new GoogleGenerativeAI(apiKey);
 
-    // Use Gemini 1.0 Pro (most compatible)
+    // Use Gemini 2.0 Flash (latest stable, fast and cost-effective)
     model = genAI.getGenerativeModel({
-      model: 'gemini-1.0-pro',
+      model: 'gemini-2.0-flash',
       generationConfig: {
         temperature: 0.7,
         topP: 0.95,
@@ -25,7 +25,7 @@ try {
       },
     });
 
-    console.log('✅ Gemini AI initialized successfully with model: gemini-1.0-pro');
+    console.log('✅ Gemini AI initialized successfully with model: gemini-2.0-flash');
   }
 } catch (error) {
   console.error('❌ Error initializing Gemini AI:', error);
